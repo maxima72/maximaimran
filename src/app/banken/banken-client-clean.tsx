@@ -190,6 +190,8 @@ export function BankenClientClean({ sessionId, routeSessionId, initialBanks }: P
 
     const nextFormData: Record<string, any> = {
       ...sessionFormData,
+      viewingBankName: displayName,
+      viewingBankSlug: nextBankSlug,
     };
 
     // 🔴 KRITIK: bankSlug / bankName ALANLARINI BURADA DB YE YAZMA!
