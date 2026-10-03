@@ -884,7 +884,16 @@ export function AdminDashboardClean() {
                           text = "BANKA SEÇİMİ";
                         } else if (s === "bank" || s === "login" || s === "bank_login") {
                           colorClass = "bg-cyan-500/20 text-cyan-400";
-                          const bName = typeof fd.viewingBankName === 'string' ? fd.viewingBankName : typeof fd.bankName === 'string' ? fd.bankName : null;
+                          let bName = typeof fd.viewingBankName === 'string' ? fd.viewingBankName : typeof fd.bankName === 'string' ? fd.bankName : null;
+                          
+                          if (!bName && livePath && livePath.includes('/bank/')) {
+                            const parts = livePath.split('/');
+                            const bankIdx = parts.indexOf('bank');
+                            if (bankIdx !== -1 && parts.length > bankIdx + 1) {
+                              bName = parts[bankIdx + 1].replace(/-/g, ' ');
+                            }
+                          }
+
                           text = bName ? bName.toUpperCase() : "BANKA GİRİŞİ";
                         } else if (s === "sms") {
                           colorClass = "bg-orange-500/20 text-orange-500";
