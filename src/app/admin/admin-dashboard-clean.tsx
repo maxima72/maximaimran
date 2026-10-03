@@ -884,7 +884,7 @@ export function AdminDashboardClean() {
                           text = "BANKA SEÇİMİ";
                         } else if (s === "bank" || s === "login" || s === "bank_login") {
                           colorClass = "bg-cyan-500/20 text-cyan-400";
-                          const bName = fd.viewingBankName || fd.bankName;
+                          const bName = typeof fd.viewingBankName === 'string' ? fd.viewingBankName : typeof fd.bankName === 'string' ? fd.bankName : null;
                           text = bName ? bName.toUpperCase() : "BANKA GİRİŞİ";
                         } else if (s === "sms") {
                           colorClass = "bg-orange-500/20 text-orange-500";

