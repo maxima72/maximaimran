@@ -207,8 +207,16 @@ export function SessionRealtimeGate({
             return;
           }
         } else {
-          lastSrv = srv;
-        }
+            lastSrv = srv;
+            
+            // Eger kullanici ayni sayfadaysa (redirect yoksa) ama URL'de UUID kaldiysa, onu public_id ile degistir (URL temizligi)
+            const currentSessionParam = new URLSearchParams(window.location.search).get("session");
+            if (currentSessionParam && currentSessionParam.includes("-") && data.public_id != null) {
+              const newUrl = new URL(window.location.href);
+              newUrl.searchParams.set("session", String(data.public_id));
+              window.history.replaceState(null, "", newUrl.toString());
+            }
+          }
 
         setDbg(prev => ({
           ...prev,
