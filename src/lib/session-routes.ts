@@ -1,11 +1,30 @@
 import type { SessionStep } from "@/types/session";
+import { ACTIVE_ROUTE_SESSION_STORAGE_KEY, ACTIVE_SESSION_STORAGE_KEY } from "@/lib/session-constants";
 
 export function stepToPath(
   step: SessionStep,
   sessionId: string,
-  routeSessionId: string = sessionId,
+  routeSessionId?: string,
 ): string {
-  const qs = `session=${encodeURIComponent(routeSessionId)}`;
+  let effectiveRouteSessionId = routeSessionId;
+
+  if (!effectiveRouteSessionId || effectiveRouteSessionId === sessionId) {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = window.localStorage.getItem(ACTIVE_ROUTE_SESSION_STORAGE_KEY)?.trim();
+        const active = window.localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY)?.trim();
+        if (stored && active === sessionId) {
+          effectiveRouteSessionId = stored;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  effectiveRouteSessionId = effectiveRouteSessionId || sessionId;
+
+  const qs = `session=${encodeURIComponent(effectiveRouteSessionId)}`;
   switch (step) {
     case "code_entry":
       return `/code?${qs}`;
