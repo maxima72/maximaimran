@@ -64,6 +64,7 @@ export function LanguageTab({ darkMode }: { darkMode: boolean }) {
   if (!settings) return <div className="opacity-50 p-8 text-center font-medium">Ayarlar bulunamadı.</div>;
 
   const availableLanguages = [
+    { code: "et", name: "Estonca (Eesti)" },
     { code: "nl", name: "Hollandaca (Nederlands)" },
     { code: "en", name: "İngilizce (English)" },
     { code: "de", name: "Almanca (Deutsch)" },
