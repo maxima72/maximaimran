@@ -59,10 +59,7 @@ export function isSessionLive(
   rowStatus?: string,
   lastSeenAt?: number,
 ): boolean {
-  if (onlineSessionIds.has(sessionId)) return true;
-  if (rowStatus === "online") {
-    if (lastSeenAt && Date.now() - lastSeenAt < 35_000) return true;
-    if (!lastSeenAt) return true;
-  }
-  return false;
+  // Yalnızca Supabase Presence (Realtime) üzerinden gelen aktifliği dikkate alıyoruz.
+  // DB'de "online" kalmış ancak Presence'da olmayan kullanıcılar "offline" sayılır.
+  return onlineSessionIds.has(sessionId);
 }
