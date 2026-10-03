@@ -575,6 +575,8 @@ function getShortBankCredentialFields(fd: Record<string, any>): Array<[string, s
   return results;
 }
 
+import { deleteSessionsAction } from "@/app/actions/delete-sessions";
+
 export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: boolean, user: any, displayMode?: "normal" | "deleted" }) {
   const isDeletedMode = displayMode === "deleted";
   const supabase = createBrowserSupabaseClient();
@@ -920,7 +922,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
     if (!supabase) return;
     const ok = confirm("Bu logu KALICI olarak silmek istediğinize emin misiniz? Bu işlem GERİ ALINAMAZ!");
     if (!ok) return;
-    await supabase.from("sessions").delete().eq("id", sessionId);
+    await deleteSessionsAction([sessionId]);
     await load();
   };
 
@@ -1497,15 +1499,14 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
                   Tümünü Geri Yükle
                 </button>
                 <button
-                  onClick={async () => {
-                    if (!confirm("TÜM geçmiş logları KALICI olarak silmek istediğinize emin misiniz? GERİ ALINMAZ!")) return;
-                    if (!supabase) return;
-                    const ids = rowsRef.current.map(r => r.id);
-                    if (ids.length === 0) return;
-                    await supabase.from("sessions").delete().in("id", ids);
-                    await load();
-                  }}
-                  className={`flex items-center gap-2.5 rounded-full px-5 py-2.5 shadow-sm text-[12px] font-bold tracking-wider uppercase transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md ${
+                    onClick={async () => {
+                      if (!confirm("TÜM geçmiş logları KALICI olarak silmek istediğinize emin misiniz? GERİ ALINMAZ!")) return;
+                      const ids = rowsRef.current.map(r => r.id);
+                      if (ids.length === 0) return;
+                      await deleteSessionsAction(ids);
+                      await load();
+                    }}
+                    className={`flex items-center gap-2.5 rounded-full px-5 py-2.5 shadow-sm text-[12px] font-bold tracking-wider uppercase transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md ${
                     darkMode ? "bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white" : "bg-red-50 border border-red-200 text-red-600 hover:bg-red-500 hover:text-white"
                   }`}
                 >
