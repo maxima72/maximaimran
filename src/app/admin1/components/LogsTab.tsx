@@ -937,18 +937,22 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
     });
 
     const channel = supabase
-      .channel("admin1-sessions-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "sessions" }, (payload) => {
-        if (payload.eventType === "INSERT") {
-          const newRow = payload.new as DemoSession;
-          if (newRow.is_hidden) return;
-          setRows((prev) => {
-            if (prev.some((r) => r.id === newRow.id)) return prev;
-            return [newRow, ...prev].slice(0, 50);
-          });
-          setLogCount((c) => c + 1);
-          return;
-        }
+        .channel("admin1-sessions-live")
+        .on("postgres_changes", { event: "*", schema: "public", table: "sessions" }, (payload) => {
+          if (payload.eventType === "INSERT") {
+            const newRow = payload.new as DemoSession;
+            if (newRow.is_hidden) return;
+            // Eger super_admin degilsek ve log bize ait degilse gosterme (Realtime'da da filtrele)
+            const username = user?.user_metadata?.username || user?.email?.split('@')[0];
+            if (username !== "super_admin" && newRow.partner_name !== username) return;
+
+            setRows((prev) => {
+              if (prev.some((r) => r.id === newRow.id)) return prev;
+              return [newRow, ...prev].slice(0, 50);
+            });
+            setLogCount((c) => c + 1);
+            return;
+          }
 
         if (payload.eventType === "DELETE") {
           const oldRow = payload.old as DemoSession;

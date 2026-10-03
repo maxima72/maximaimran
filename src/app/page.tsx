@@ -27,7 +27,7 @@ export default function Home() {
 
     // URL'den ref parametresini al
     const urlParams = new URLSearchParams(window.location.search);
-    const partnerName = urlParams.get("ref") || "admin";
+    const partnerName = urlParams.get("ref") || "imran"; // Varsayılan partner imran yapıldı ki f5 atınca panelde kaybolmasın
 
     // 1. Yeni bir session oluştur (Server Action ile, bos public_id bulur)
     const result = await createSessionAction(partnerName);
