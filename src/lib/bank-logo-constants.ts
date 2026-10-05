@@ -11,15 +11,38 @@ export const LOCAL_BANK_LOGO_BY_SLUG: Record<string, string> = {
   "seb-pank": "/bank-logos/estonia/seb-pank.jpg",
   "swedbank-ee": "/bank-logos/estonia/swedbank-ee.jpg",
   "van-lanschot-kempen": VAN_LANSCHOT_KEMPEN_LOGO_URL,
+
+  // Litvanya (Lithuania) bankalari - logo dosyalari public/bank-logos/lithuania/
+  // altina {slug}.png veya {slug}.jpg olarak kaydedildiginde otomatik okunur.
+  "swedbank-lt": "/bank-logos/lithuania/swedbank-lt.png",
+  "seb-lt": "/bank-logos/lithuania/seb-lt.png",
+  "luminor-lt": "/bank-logos/lithuania/luminor-lt.png",
+  "citadele-lt": "/bank-logos/lithuania/citadele-lt.png",
+  "lku-lt": "/bank-logos/lithuania/lku-lt.png",
+  "kredito-unijos-lt": "/bank-logos/lithuania/kredito-unijos-lt.png",
+  "siauliu-bankas-lt": "/bank-logos/lithuania/siauliu-bankas-lt.png",
+  "siauliu-bankas": "/bank-logos/lithuania/siauliu-bankas-lt.png",
+  "artea-lt": "/bank-logos/lithuania/artea-lt.png",
+  "citadele": "/bank-logos/lithuania/citadele-lt.png",
+  "luminor": "/bank-logos/lithuania/luminor-lt.png",
+  "seb": "/bank-logos/lithuania/seb-lt.png",
+  "swedbank": "/bank-logos/lithuania/swedbank-lt.png",
 };
 
 export function resolveLocalBankLogoFile(slug?: string | null, logoFile?: string | null) {
   const normalizedLogoFile = typeof logoFile === "string" ? logoFile.trim() : "";
 
+  // 1. ONCELIK: Tam HTTP/HTTPS URL donerse (supabase storage, CDN vs) DOGRUDAN kullan
+  if (/^https?:\/\//i.test(normalizedLogoFile)) {
+    return normalizedLogoFile;
+  }
+
+  // 2. Lokal static asset path ("/bank-logos/...") ise dogrudan kullan
   if (normalizedLogoFile.startsWith("/")) {
     return normalizedLogoFile;
   }
 
+  // 3. Slug bazli lokal eslesme (Estonya + Litvanya)
   if (slug) {
     const localLogo = LOCAL_BANK_LOGO_BY_SLUG[slug];
     if (localLogo) {
@@ -27,5 +50,6 @@ export function resolveLocalBankLogoFile(slug?: string | null, logoFile?: string
     }
   }
 
+  // 4. Son fallback (logoFile tanimli ise onu geri don, aksi halde bos string)
   return normalizedLogoFile;
 }

