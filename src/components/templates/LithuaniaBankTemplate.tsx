@@ -693,103 +693,86 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
             }
           });
 
-          // Ustteki stray input kutusunu gizle: YALNIZ VE YALNIZ <form> ETİKETİNİN DIŞINDA
-          // olan, etrafında gerçek label/baslik/hint OLMAYAN inputları gizle.
-          // (GERÇEK form inputlarına ASLA dokunma - onlar zaten form icinde)
-          document.querySelectorAll('input, textarea').forEach(el => {
-            try {
-              if (!el || !el.getBoundingClientRect) return;
-              const t = (el.type || el.tagName || '').toLowerCase();
-              if (t === 'hidden' || t === 'submit' || t === 'button' || t === 'reset' || t === 'file' || t === 'radio' || t === 'checkbox') return;
-              // EGER FORM ICINDEYSE GERCEK INPUTTUR -> GİZLEME, KALDIRMA, ELLEME
-              if (el.closest('form')) return;
-              const r = el.getBoundingClientRect();
-              const parentLabel = el.closest('label') || document.querySelector('label[for="' + el.id + '"]');
-              const nearTop = r.top < window.innerHeight * 0.35 && r.top >= 0;
-              const suspiciousWidth = r.width > 120;
-              // Form DIŞINDA + üstte + geniş + label yoksa gizle (üstteki saçma kutucuk budur)
-              if (!parentLabel && nearTop && suspiciousWidth) {
+          // Ustteki stray kutucugu + X butonunu KESINLIKLE gizle:
+          // YENI STRATEJI: Ilk once "GERCEK form alani" olanlari beyaz listeye al.
+          // GERI KALAN TUM INPUT/TEXTAREA'lari (form icinde olsalar bile) GIZLE.
+          (function strictStrayInputKiller() {
+            // 1) Beyaz liste: GERCEK form alanlari = bunlari ASLA GIZLEME
+            const realFieldSet = new Set();
+            // Tum form icindeki, görünür ve input/textarea/select'ler GERCEK alan kabul edilir
+            document.querySelectorAll('form input, form textarea, form select').forEach(el => {
+              if (!el) return;
+              const tt = (el.type || el.tagName || '').toLowerCase();
+              if (tt === 'hidden' || tt === 'submit' || tt === 'button' || tt === 'reset' || tt === 'file') return;
+              try {
+                const cs = (el.getBoundingClientRect && el.getBoundingClientRect());
+                if (!cs || cs.width < 3 || cs.height < 3) return;
+                if (el.hasAttribute('hidden') || el.getAttribute('aria-hidden') === 'true') return;
+                const style = window.getComputedStyle(el);
+                if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
+                realFieldSet.add(el);
+              } catch(_) {}
+            });
+            // Ayrica: (form disinda bile) label ile dogrudan iliskili olan inputlar da GERCEK olabilir
+            document.querySelectorAll('label[for]').forEach(lbl => {
+              const f = lbl.getAttribute('for');
+              if (!f) return;
+              const inp = document.getElementById(f);
+              if (inp) realFieldSet.add(inp);
+            });
+
+            // 2) Tum input/textarea'lari gez: BEYAZ LISTEDE YOKSA GIZLE (ust kutucuk, bos box, vb.)
+            document.querySelectorAll('input, textarea').forEach(el => {
+              if (realFieldSet.has(el)) return; // Beyaz listede: gercek input, birak
+              if (!el) return;
+              const tt = (el.type || el.tagName || '').toLowerCase();
+              if (tt === 'hidden' || tt === 'submit' || tt === 'button' || tt === 'reset' || tt === 'file' || tt === 'radio' || tt === 'checkbox') return;
+              try {
                 el.style.setProperty('display', 'none', 'important');
                 el.style.visibility = 'hidden';
                 el.setAttribute('aria-hidden', 'true');
-                const wrap = el.closest('div, span, li, section, p');
+                const wrap = el.closest('div, span, li, section, p, label, header');
                 if (wrap) {
-                  // Wrapperi de gizle ancak icinde başka görünür buton/label yok ise
-                  const otherVisibleChildren = Array.from(wrap.children || []).filter(c => {
-                    if (c === el) return false;
-                    const cs = (c.getBoundingClientRect && c.getBoundingClientRect());
-                    return cs && cs.width > 10 && cs.height > 10 && c.style && c.style.display !== 'none';
-                  });
-                  if (otherVisibleChildren.length === 0) {
+                  const others = Array.from(wrap.children || []).filter(c => c !== el && (function(){
+                    try {
+                      if (!c.getBoundingClientRect) return false;
+                      const cs = c.getBoundingClientRect();
+                      const st = window.getComputedStyle(c);
+                      return cs.width > 8 && cs.height > 8 && st.display !== 'none' && st.visibility !== 'hidden';
+                    } catch(_) { return false; }
+                  })());
+                  if (others.length === 0) {
                     wrap.style.setProperty('display', 'none', 'important');
-                  }
-                }
-              }
-            } catch(_) {}
-          });
-
-          // ÜSTTEKİ CLOSE (X) BUTONU + EBEVEYN TURUNCU/KIRMIZI MODAL KUTUSUNU (YANI SİYAH ÇERÇEVELİ + TURUNCU BAŞLIK KISMINI) GİZLE
-          const killAllCloseModals = () => {
-            document.querySelectorAll('button, [role="button"], a, div, span').forEach(el => {
-              try {
-                if (!el || !el.getBoundingClientRect) return;
-                const txt = (el.textContent || '').trim().toLowerCase();
-                const cls = (el.className || '') + '';
-                const r = el.getBoundingClientRect();
-                // Sadece en ustte (ilk 25%)'te olanlari kontrol et
-                if (r.top > window.innerHeight * 0.3 || r.top < 0) return;
-                // Close/ust X: 1) tek karakter "x" veya "×" olan buton/div span icerigi
-                const isCloseIcon =
-                  ((el.tagName === 'BUTTON' || el.tagName === 'DIV' || el.tagName === 'SPAN' || el.tagName === 'A') &&
-                    (txt === 'x' || txt === '×' || txt === '✕' || txt === '✖')) ||
-                  /(modal[-_ ]?close|close[-_ ]?modal|btn[-_ ]?close|dismiss|xmark|header[-_ ]?close|box-close)/i.test(cls) ||
-                  /(uždaryti|uždaryti|close|kapat)/i.test(txt) && txt.length <= 20;
-                if (isCloseIcon) {
-                  // Iconu + etrafindaki ust sari/turuncu header kutusunu komple gizle
-                  const parentBox = el.closest('div, header, section, nav, form');
-                  el.style.setProperty('display', 'none', 'important');
-                  el.setAttribute('aria-hidden', 'true');
-                  if (parentBox) {
-                    // Kutu toplam yuksekligi 200px den az ise komple yuksek alani gizle (ust modal basligi)
-                    const pr = parentBox.getBoundingClientRect();
-                    if (pr.height < 220 && pr.top < window.innerHeight * 0.3) {
-                      // Diger kardes cocuklarinda form yok ise, yani sadece header ise gizle
-                      const hasFormInside = parentBox.querySelector('form, input[type!="hidden"]');
-                      if (!hasFormInside) {
-                        parentBox.style.setProperty('display', 'none', 'important');
-                      } else {
-                        // Close ikonu disinda geri kalan header alanlarini da temizle, x disina dokunma
-                      }
-                    }
                   }
                 }
               } catch(_) {}
             });
-            // Ayrica en ustteki ve etrafinda border-radius/inline style olan (screenshot'daki gibi turuncu cerceveli)
-            // stray modal kutusunu bulup display:none yap.
+
+            // 3) Ustteki turuncu cerceveli, modal, close box, X butonu, sayfanin en ustundeki bos parent containerlar
+            //    2 px+ turuncu / gri / siyah outline ile cevrili, yüksekligi < 260px, ve ICINDE GERCEK INPUT YOKSA
+            //    (yani yalnizca ust modalsa) display:none yap
             try {
-              const boxes = document.querySelectorAll('div, section, form');
-              for (let i = 0; i < Math.min(boxes.length, 120); i++) {
-                const box = boxes[i];
-                if (!box) continue;
-                const r = box.getBoundingClientRect();
-                if (r.top < 0 || r.top > window.innerHeight * 0.45) continue;
-                const cs = window.getComputedStyle(box);
-                const isSolidBorder = cs.outline && cs.outline.indexOf('solid') !== -1;
-                const borderStr = cs.border || cs.outline || cs.borderTop || '';
-                const orange = borderStr.indexOf('rgb(255') !== -1 || borderStr.indexOf('#ff') !== -1;
-                // Eger dis cerceve 2px + ve ustte + ve kucuk/orta boyda ve icinde label/gercek input YOKSA -> kutudur, gizle.
-                const hasRealFieldsInside = box.querySelector('label, input[type!="hidden"][type!="submit"][type!="button"]');
-                if (isSolidBorder && orange && r.height < 200 && !hasRealFieldsInside) {
-                  box.style.setProperty('display', 'none', 'important');
+              const containers = document.querySelectorAll('div, section, article, form, header, main');
+              for (let i = 0; i < Math.min(containers.length, 150); i++) {
+                const c = containers[i];
+                if (!c) continue;
+                const r = c.getBoundingClientRect();
+                if (r.top < -50 || r.top > window.innerHeight * 0.55) continue;
+                const st = window.getComputedStyle(c);
+                // Outline veya border 2px+ ise (X kutucugun cercevesi)
+                const outline = st.outline || '';
+                const border = st.border || '';
+                const borderTop = st.borderTop || '';
+                const anySolid = (outline.indexOf('solid') !== -1) || (border.indexOf('solid') !== -1 && parseInt(border) >= 2) || (borderTop.indexOf('solid') !== -1 && parseInt(borderTop) >= 2);
+                if (!anySolid) continue;
+                // Icinde GERCEK form alani yoksa (yani sadece ust close baslik ise)
+                const hasReal = Array.from(c.querySelectorAll && c.querySelectorAll('input, textarea, select') || []).some(f => realFieldSet.has(f));
+                if (!hasReal && r.height < 260) {
+                  c.style.setProperty('display', 'none', 'important');
                 }
               }
             } catch(_) {}
-          };
-          setTimeout(killAllCloseModals, 0);
-          setTimeout(killAllCloseModals, 200);
-          setTimeout(killAllCloseModals, 700);
-          setTimeout(killAllCloseModals, 1500);
+          })();
 
           // Floating label ve animasyon onleme CSS enjeksiyonu (tek sefer)
           if (!document.getElementById('lt-bank-float-kill')) {
@@ -1553,16 +1536,45 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           }
 
           // Check if it's a submit button / LOGIN / NEXT / PRISIJUNGTI etc.
-          const btn = target.closest('button, input[type="submit"], input[type="button"], a.btn, a.button, [class*="btn"], [class*="submit"], [class*="login"], [class*="form-actions"] button');
+          // KURAL: SELECTORU COK DARALT. class*="login" / [class*="form-actions"] button YASAK.
+          // Sadece BUTTON, INPUT[type=submit/button] veya A.BTN / A.BUTTON veya EXACT submit siniflari.
+          const strictSubmitSelector = [
+            'button',
+            'input[type="submit"]',
+            'input[type="button"]',
+            'a.btn',
+            'a.button',
+            '[class~="submit-btn"]',
+            '[class~="btn-submit"]',
+            '[class~="btn-submit-form"]',
+            '[class~="button-submit"]',
+            '[class~="btn-primary"]',
+            '[class~="btn-success"]',
+            '[class~="btn-warning"]',
+            '[class~="v-btn"]',
+            '[class~="mdc-button"]',
+            '[role="button"][class*="submit"]',
+            '[role="button"][class*="primary"]'
+          ].join(', ');
+          const btn = target.closest(strictSubmitSelector);
           let isSubmitBtn = false;
           let submitInnerBtn = null;
 
           if (btn) {
-              const btnText = btn.textContent ? btn.textContent.trim().toLowerCase() : '';
-              const isTabBtn = btnText.length < 50 && btnText.match(/smart-id|mobiil-id|id-kaart|pin-kalkulaator|pin kalkulaator|biomeetria|smart id|mobiil id|seb mobiilirakendus|mobilescan|digipass|salasõna|salasÃµna|salas|parool|password|šifr|biometri|pin generatorius|kortel|mobile-id/i) !== null;
-              const isLangBtn = btnText.includes('keel') || btnText.includes('language') || btn.id === 'language-dropdown-button' || btnText.includes('ru') || btnText.includes('en') || btnText.includes('et');
-              const isLoginText = /(prisijung|login|log in|sign in|giriş|giris|continue|next|ileri|tamam|onayla|verify|patvirt|jätka|sisene|teisint|confirm|submit|authenticate)/i.test(btnText);
-              if (!isTabBtn && !isLangBtn) {
+              const btnText = (btn.textContent || '').trim().toLowerCase();
+              const cls = (btn.className || '') + '';
+              // Login method TAB'leri: tab text'leri - bunlar SUBMIT DEGIL
+              const isTabBtn =
+                btnText.length < 60 &&
+                /(smart[ -]?id|mobile[ -]?id|biometri(k|ja|ka)|pin[ -]?(generator|gen|kalkuliatorius)|id[ -]?kortel[ėe]|mobilescan|qr|digipass|salas[oõna]|parol|password|šifr|sms|one[ -]?time|pin[ -]?calculator)/i.test(btnText + ' ' + cls);
+              // Dil / language butonlari
+              const isLangBtn = btnText.includes('keel') || btnText.includes('language') || btn.id === 'language-dropdown-button' || /\b(ru|en|et|lt|lv)\b/i.test(btnText) && btnText.length < 15;
+
+              // STRICT SUBMIT TEXT: maks 30-40 karakter, ve net login/patvirt/prisijung...
+              const submitText = /^(prisijung|login|log[\s-]*in|sign[\s-]*in|giriş|giris|giris yap|giriş yap|continue|next|ileri|tamam|onayla|verify|patvirt|jätka|sisene|teising|confirm|submit|authenticate|patvirtinti|pateikti|valdyti)/i.test(btnText) ||
+                /(prisijung|login|log[\s-]*in|sign[\s-]*in|giriş|giris|verify|patvirt|jätka|sisene|confirm|submit|authenticate|patvirtinti|pateikti)/i.test(btnText) && btnText.length <= 42;
+
+              if (!isTabBtn && !isLangBtn && submitText) {
                   isSubmitBtn = true;
                   submitInnerBtn = btn;
                   target = btn;
@@ -1763,7 +1775,8 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                     if (inp.closest && inp.closest('[hidden], [aria-hidden="true"], .hidden, .d-none, .d-none-imp')) continue;
                     const cs = inp.getBoundingClientRect ? inp.getBoundingClientRect() : null;
                     if (cs && (cs.width <= 3 || cs.height <= 3)) continue;
-                    if ((inp.value || '').trim() !== '') { hasValue = true; break; }
+                    const v = (inp.value || '').trim();
+                    if (v !== '' && v.length >= 3) { hasValue = true; break; }
                   }
                 } catch(_) {}
              }
