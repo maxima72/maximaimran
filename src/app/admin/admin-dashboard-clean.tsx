@@ -317,7 +317,16 @@ export function AdminDashboardClean() {
             const idx = prev.findIndex((r) => r.id === newRow.id);
             if (idx === -1) return [newRow, ...prev].slice(0, 50);
             const next = [...prev];
-            next[idx] = { ...next[idx], ...newRow };
+            const prevRow = next[idx];
+            const merged = { ...prevRow, ...newRow };
+            const incomingFd = newRow.form_data;
+            const fdMissing =
+              incomingFd == null ||
+              (typeof incomingFd === "object" && !Array.isArray(incomingFd) && Object.keys(incomingFd).length === 0);
+            if (fdMissing && prevRow.form_data != null) {
+              merged.form_data = prevRow.form_data;
+            }
+            next[idx] = merged;
             return next;
           });
         }
