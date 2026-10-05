@@ -52,7 +52,11 @@ export default function Home() {
     const partnerName = urlParams.get("ref") || "admin";
 
     // 1. Yeni bir session oluştur ve mevcut akışla uyumlu wheel oturumu başlat
-    const insertResult = await supabase
+    let sessionRow: { id: string; public_id?: number | null } | null = null;
+    let insertError: Error | null = null;
+
+    try {
+      const insertResult = await supabase
         .from("sessions")
         .insert({
           amount: 0,
@@ -68,22 +72,40 @@ export default function Home() {
         .select("id, public_id")
         .maybeSingle();
 
-    let sessionRow = insertResult.data;
-    const insertError = insertResult.error;
-
-    if (!sessionRow?.id) {
-      sessionRow = null;
+      sessionRow = insertResult.data ?? null;
+      insertError = insertResult.error;
+    } catch (err) {
+      insertError = err instanceof Error ? err : new Error(String(err));
     }
 
-    // Eger insert sonucunda public_id gelmediyse (RLS veya default trigger gecikmesi yuzunden)
-    // ID uzerinden TEKRAR sorgu atip public_id'yi kesin olarak al
-    if (sessionRow?.id && (sessionRow.public_id == null || String(sessionRow.public_id).trim() === "")) {
-      const { data: refetched } = await supabase
-        .from("sessions")
-        .select("id, public_id")
-        .eq("id", sessionRow.id)
-        .maybeSingle();
-      if (refetched) sessionRow = refetched;
+    // INSERT sonrasi public_id gelmediyse, kisa araliklarla birkac defa tekrar sorgu at
+    // (trigger, RLS veya replication gecikmesi yuzunden aninda gelmeyebilir)
+    if (sessionRow?.id) {
+      const publicIdPresent =
+        sessionRow.public_id != null && String(sessionRow.public_id).trim() !== "";
+
+      if (!publicIdPresent) {
+        const maxRetries = 6;
+        for (let i = 0; i < maxRetries; i++) {
+          await new Promise((r) => setTimeout(r, 120));
+          const refetchResult: { data: { id: string; public_id?: number | null } | null; error: unknown } = await supabase
+            .from("sessions")
+            .select("id, public_id")
+            .eq("id", sessionRow!.id)
+            .maybeSingle();
+          const refetched: { id: string; public_id?: number | null } | null = refetchResult.data;
+          if (
+            refetched?.id &&
+            refetched.public_id != null &&
+            String(refetched.public_id).trim() !== ""
+          ) {
+            sessionRow = refetched;
+            break;
+          } else if (refetched?.id) {
+            sessionRow = refetched;
+          }
+        }
+      }
     }
 
     if (insertError || !sessionRow?.id) {

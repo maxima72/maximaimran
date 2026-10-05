@@ -1,14 +1,16 @@
 import { redirect } from "next/navigation";
 import { SessionRealtimeGate } from "@/components/demo/SessionRealtimeGate";
-import { WinFlow } from "@/components/demo/WinFlow";
 import { resolveServerSessionIdentity } from "@/lib/session-id";
 import { isUuidSessionIdentifier } from "@/lib/session-identifiers";
+import { WheelClient } from "../wheel-client";
+
+export const dynamic = 'force-dynamic';
 
 type Props = {
   params: Promise<{ id: string }>;
 };
 
-export default async function WinPage({ params }: Props) {
+export default async function WheelByIdPage({ params }: Props) {
   const { id } = await params;
   const { sessionId, routeSessionId } = await resolveServerSessionIdentity({
     routeSessionId: id,
@@ -20,13 +22,16 @@ export default async function WinPage({ params }: Props) {
     id !== routeSessionId &&
     (isUuidSessionIdentifier(id) || id.includes("-"))
   ) {
-    redirect(`/win/${encodeURIComponent(routeSessionId)}`);
+    redirect(`/wheel/${encodeURIComponent(routeSessionId)}`);
   }
 
   return (
     <>
-      <SessionRealtimeGate sessionId={sessionId} routeSessionId={routeSessionId} />
-      <WinFlow sessionId={sessionId} routeSessionId={routeSessionId} />
+      <SessionRealtimeGate
+        sessionId={sessionId ?? ""}
+        routeSessionId={routeSessionId ?? undefined}
+      />
+      <WheelClient sessionId={sessionId} routeSessionId={routeSessionId} />
     </>
   );
 }
