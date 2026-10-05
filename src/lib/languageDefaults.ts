@@ -227,8 +227,7 @@ export const translations: Record<string, TranslationKeys> = {
     profile_phone_label: "Mobiliojo telefono numeris",
     profile_button: "Kitas",
     profile_loading_text: "Apdorojama..."
-  }
-};
+  },
   cs: {
     portal_name: "Zákaznický portál Albert Heijn",
     support_center_name: "Služby Albert Heijn",
