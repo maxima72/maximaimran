@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import LiveToast from "@/components/LiveToast";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { VisitorTracker } from "@/components/VisitorTracker";
+import { OgImageTags } from "@/components/OgImageTags";
 import "./globals.css";
 
 export default function RootLayout({
@@ -38,7 +39,10 @@ export default function RootLayout({
   const ENABLE_TOAST = false;
 
   return (
-    <html lang="et">
+    <html lang="lt">
+      <head>
+        <OgImageTags />
+      </head>
       <body className={bodyClass}>
         <VisitorTracker />
         <SettingsProvider>
