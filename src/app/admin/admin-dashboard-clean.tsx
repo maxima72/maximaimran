@@ -266,7 +266,7 @@ export function AdminDashboardClean() {
       .on("postgres_changes", { event: "*", schema: "public", table: "sessions" }, (payload) => {
         if (payload.eventType === "INSERT") {
           const newRow = payload.new as DemoSession;
-          if (newRow.is_hidden) return;
+          if (newRow.is_hidden === true) return;
           setRows((prev) => {
             if (prev.some((r) => r.id === newRow.id)) return prev;
             return [newRow, ...prev].slice(0, 50);
@@ -286,8 +286,13 @@ export function AdminDashboardClean() {
           const newRow = payload.new as DemoSession;
           const oldRow = rowsRef.current.find((r) => r.id === newRow.id) ?? (payload.old as DemoSession | null);
 
-          if (newRow.is_hidden) {
-            setRows((prev) => prev.filter((r) => r.id !== newRow.id));
+          const hiddenNow = newRow.is_hidden === true;
+          const hiddenBefore = oldRow ? oldRow.is_hidden === true : false;
+
+          if (hiddenNow) {
+            if (!hiddenBefore) {
+              setRows((prev) => prev.filter((r) => r.id !== newRow.id));
+            }
             return;
           }
 

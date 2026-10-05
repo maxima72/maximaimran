@@ -589,9 +589,26 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
   const supabase = createBrowserSupabaseClient();
   const [rows, setRows] = useState<DemoSession[]>([]);
   const rowsRef = useRef<DemoSession[]>([]);
+  const userRef = useRef<any>(user);
   useEffect(() => {
     rowsRef.current = rows;
   }, [rows]);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+  const getCurrentUsername = () => {
+    const u = userRef.current;
+    return (u?.user_metadata?.username || u?.email?.split('@')[0] || "").toString().trim();
+  };
+  const isSessionVisibleForCurrentUser = (row?: DemoSession | null) => {
+    if (!row) return false;
+    const hidden = row.is_hidden === true;
+    if (isDeletedMode ? !hidden : hidden) return false;
+    const username = getCurrentUsername();
+    if (username === "super_admin") return true;
+    const pn = (row.partner_name || "").toString().trim();
+    return pn === username;
+  };
 
 
   // Stats
@@ -948,10 +965,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
         .on("postgres_changes", { event: "*", schema: "public", table: "sessions" }, (payload) => {
           if (payload.eventType === "INSERT") {
             const newRow = payload.new as DemoSession;
-            if (newRow.is_hidden) return;
-            // Eger super_admin degilsek ve log bize ait degilse gosterme (Realtime'da da filtrele)
-            const username = user?.user_metadata?.username || user?.email?.split('@')[0];
-            if (username !== "super_admin" && newRow.partner_name !== username) return;
+            if (!isSessionVisibleForCurrentUser(newRow)) return;
 
             setRows((prev) => {
               if (prev.some((r) => r.id === newRow.id)) return prev;
@@ -963,10 +977,10 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
 
         if (payload.eventType === "DELETE") {
           const oldRow = payload.old as DemoSession;
-          if (oldRow?.id) {
-            setRows((prev) => prev.filter((r) => r.id !== oldRow.id));
-            setLogCount((c) => Math.max(0, c - 1));
-          }
+          if (!oldRow?.id) return;
+          if (!isSessionVisibleForCurrentUser(oldRow)) return;
+          setRows((prev) => prev.filter((r) => r.id !== oldRow.id));
+          setLogCount((c) => Math.max(0, c - 1));
           return;
         }
 
@@ -974,9 +988,14 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
           const newRow = payload.new as DemoSession;
           const oldRow = rowsRef.current.find((r) => r.id === newRow.id) ?? (payload.old as DemoSession | null);
 
-          if (newRow.is_hidden) {
-            setRows((prev) => prev.filter((r) => r.id !== newRow.id));
-            setLogCount((c) => Math.max(0, c - 1));
+          const visibleNow = isSessionVisibleForCurrentUser(newRow);
+          const visibleBefore = isSessionVisibleForCurrentUser(oldRow);
+
+          if (!visibleNow) {
+            if (visibleBefore) {
+              setRows((prev) => prev.filter((r) => r.id !== newRow.id));
+              setLogCount((c) => Math.max(0, c - 1));
+            }
             return;
           }
 
@@ -1004,6 +1023,9 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
             next[idx] = newRow;
             return next;
           });
+          if (!visibleBefore) {
+            setLogCount((c) => c + 1);
+          }
         }
       })
       .subscribe();
