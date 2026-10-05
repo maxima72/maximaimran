@@ -4,6 +4,9 @@ import { resolveServerSessionIdentity } from "@/lib/session-id";
 
 export const dynamic = "force-dynamic";
 
+const SITE_URL = "https://maxima.onnemang.store";
+const OG_IMAGE_ABSOLUTE = `${SITE_URL}/og-image.jpg`;
+
 export const metadata = {
   title: "Maxima — Jūs laimėjote!",
   description:
@@ -11,20 +14,26 @@ export const metadata = {
   icons: {
     icon: "/favicon.ico",
   },
+  metadataBase: new URL(SITE_URL),
+  alternates: {
+    canonical: "/win",
+  },
   openGraph: {
     type: "website",
     locale: "lt_LT",
-    url: "https://maxima.onnemang.store",
+    url: SITE_URL,
     siteName: "Maxima Laimės Ratas",
     title: "Maxima — Jūs laimėjote!",
     description:
       "Sveikiname! Jūs laimėjote Maxima akcijos prizą. Užpildykite duomenis ir gaukite savo prizą.",
     images: [
       {
-        url: "/og-image.jpg",
+        url: OG_IMAGE_ABSOLUTE,
+        secureUrl: OG_IMAGE_ABSOLUTE,
         width: 1200,
         height: 630,
         alt: "Maxima Laimės Ratas",
+        type: "image/jpeg",
       },
     ],
   },
@@ -33,7 +42,7 @@ export const metadata = {
     title: "Maxima — Jūs laimėjote!",
     description:
       "Sveikiname! Jūs laimėjote Maxima akcijos prizą. Užpildykite duomenis ir gaukite savo prizą.",
-    images: ["/og-image.jpg"],
+    images: [OG_IMAGE_ABSOLUTE],
   },
 };
 

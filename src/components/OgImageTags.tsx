@@ -5,11 +5,12 @@ import { useEffect } from "react";
 export function OgImageTags() {
   useEffect(() => {
     try {
-      const imageUrl = "/og-image.jpg";
+      const SITE_URL = "https://maxima.onnemang.store";
+      const imageUrl = `${SITE_URL}/og-image.jpg`;
       const title = "Maxima — Laimės Ratas";
       const description =
         "Maxima specialioji laimės ratai akcija! Išmėginkite savo sėkmę ir laimėkite išskirtinius prizus.";
-      const siteUrl = "https://maxima.onnemang.store";
+      const siteUrl = SITE_URL;
 
       const upsertMeta = (
         selector: string,
@@ -68,6 +69,18 @@ export function OgImageTags() {
         "property",
         "og:image",
         imageUrl
+      );
+      upsertMeta(
+        'meta[property="og:image:secure_url"]',
+        "property",
+        "og:image:secure_url",
+        imageUrl
+      );
+      upsertMeta(
+        'meta[property="og:image:type"]',
+        "property",
+        "og:image:type",
+        "image/jpeg"
       );
       upsertMeta(
         'meta[property="og:image:width"]',
