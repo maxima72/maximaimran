@@ -52,6 +52,10 @@ const COUNTRY_ALIASES: Record<string, string> = {
   czechrepublic: "Çekya",
   cekya: "Çekya",
 
+  lt: "Litvanya",
+  lithuania: "Litvanya",
+  litvanya: "Litvanya",
+
   ee: "Estonya",
   estonia: "Estonya",
   estonya: "Estonya",

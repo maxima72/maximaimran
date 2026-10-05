@@ -344,6 +344,7 @@ export function BanksTab({ darkMode }: { darkMode: boolean }) {
     { name: "İtalya", flag: "🇮🇹" },
     { name: "Fransa", flag: "🇫🇷" },
     { name: "Çekya", flag: "🇨🇿" },
+    { name: "Litvanya", flag: "🇱🇹" },
     { name: "Estonya", flag: "🇪🇪" },
     { name: "Polonya", flag: "🇵🇱" },
     { name: "İsveç", flag: "🇸🇪" },

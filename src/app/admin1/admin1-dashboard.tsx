@@ -115,6 +115,7 @@ export function Admin1Dashboard({ user }: { user: any }) {
     { name: "İtalya", flag: "🇮🇹", lang: "it" },
     { name: "Fransa", flag: "🇫🇷", lang: "fr" },
     { name: "Çekya", flag: "🇨🇿", lang: "cs" },
+    { name: "Litvanya", flag: "🇱🇹", lang: "lt" },
     { name: "Estonya", flag: "🇪🇪", lang: "et" },
     { name: "Polonya", flag: "🇵🇱", lang: "pl" },
     { name: "İsveç", flag: "🇸🇪", lang: "sv" },
