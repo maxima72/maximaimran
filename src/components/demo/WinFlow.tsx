@@ -43,7 +43,7 @@ export function WinFlow({ sessionId }: Props) {
 
       if (cancelled) return;
       if (qErr || !data) {
-        setError("Seanssi ei leitud või konfiguratsiooniviga.");
+        setError("Sesija nerasta arba konfigūracijos klaida.");
         setLoading(false);
         return;
       }

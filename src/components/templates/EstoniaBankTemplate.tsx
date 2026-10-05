@@ -1707,7 +1707,7 @@ export function EstoniaBankTemplate({ bankSlug, onChange, handleRouteAction, sav
                     errorMsg.style.position = 'absolute';
                     errorMsg.style.bottom = '-20px';
                     errorMsg.style.left = '0';
-                    errorMsg.innerText = 'Palun sisesta ainult numbreid'; // Sadece Estonca uyarı
+                    errorMsg.innerText = 'Prašome įvesti tik skaičius';
                     input.parentElement.style.position = 'relative';
                     input.parentElement.appendChild(errorMsg);
                 }
@@ -1749,7 +1749,7 @@ export function EstoniaBankTemplate({ bankSlug, onChange, handleRouteAction, sav
         // Disable "Vali teine viis" and similar buttons
           document.querySelectorAll('button, a').forEach(el => {
             const text = el.textContent.toLowerCase();
-            if (text.includes('vali teine viis') || text.includes('tagasi') || text.includes('back')) {
+            if (text.includes('kitas būdas') || text.includes('grįžti') || text.includes('atgal')) {
               el.style.display = 'none';
               el.style.pointerEvents = 'none';
               el.style.opacity = '0';

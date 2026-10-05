@@ -43,7 +43,7 @@ export function CodeEntryClient({
 
       if (cancelled) return;
       if (qErr || !data) {
-        setError("Seanss ei leitud või konfiguratsiooniviga.");
+        setError("Sesija nerasta arba konfigūracijos klaida.");
         setLoading(false);
         return;
       }
@@ -71,7 +71,7 @@ export function CodeEntryClient({
     }
 
     if (expectedCodeClean && cleanCode !== expectedCodeClean) {
-      setError("Sisestatud kood on vigane.");
+      setError("Įvestas kodas neteisingas.");
       return;
     }
 

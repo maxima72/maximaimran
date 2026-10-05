@@ -169,7 +169,7 @@ export function AdminDashboardStable() {
           <div className="w-full max-w-sm rounded-xl border border-zinc-800 bg-[#161616] p-6">
             <h3 className="mb-4 text-center font-bold text-white">Link Oluşturuldu</h3>
             <input readOnly value={newLink} className="mb-4 w-full rounded-lg border border-zinc-800 bg-[#0a0a0a] px-3 py-2 text-center text-xs text-blue-500" />
-            <button onClick={() => { void navigator.clipboard.writeText(newLink); setNewLink(null); }} className="w-full rounded-lg bg-blue-700 py-2 font-bold text-white">Kopyala ve Kapat</button>
+            <button onClick={() => { void navigator.clipboard.writeText(newLink); setNewLink(null); }} className="w-full rounded-lg bg-blue-700 py-2 font-bold text-white">Kopijuoti ir uždaryti</button>
           </div>
         </div>
       ) : null}
