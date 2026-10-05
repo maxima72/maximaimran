@@ -4,23 +4,7 @@ import { usePathname } from "next/navigation";
 import LiveToast from "@/components/LiveToast";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { VisitorTracker } from "@/components/VisitorTracker";
-import { Manrope, Instrument_Serif } from "next/font/google";
 import "./globals.css";
-
-const manrope = Manrope({
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-manrope",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700", "800"],
-});
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-instrument-serif",
-  display: "swap",
-  weight: ["400"],
-  style: ["normal", "italic"],
-});
 
 export default function RootLayout({
   children,
@@ -47,8 +31,6 @@ export default function RootLayout({
   const bodyClass = [
     isAdminPage ? "bg-[#f4f7f9]" : isWheelPage ? "" : "ah-theme",
     isDedicatedBankPage ? "ah-theme-overlay-bg" : "",
-    manrope.variable,
-    instrumentSerif.variable,
   ]
     .filter(Boolean)
     .join(" ");

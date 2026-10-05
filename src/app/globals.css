@@ -1,6 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap');
 @import "tailwindcss";
 
 :root {
+  --font-manrope: 'Manrope', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-instrument-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
   --background: #050816;
   --foreground: #ffffff;
   /* 2026 Premium Luxury 3D Color Palette (Maxima Estonya kampanyasi icin ozel) */
