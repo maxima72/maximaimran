@@ -604,10 +604,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
     if (!row) return false;
     const hidden = row.is_hidden === true;
     if (isDeletedMode ? !hidden : hidden) return false;
-    const username = getCurrentUsername();
-    if (username === "super_admin") return true;
-    const pn = (row.partner_name || "").toString().trim();
-    return pn === username;
+    return true;
   };
 
 
@@ -897,17 +894,11 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
     }
     query = query.order("created_at", { ascending: false });
 
-    // Sadece super_admin olmayanlar için filtrele
-    const username = user?.user_metadata?.username || user?.email?.split('@')[0];
-    if (username !== "super_admin") {
-      query = query.eq("partner_name", username);
-    }
-
     const { data } = await query.limit(50);
     const fetchedRows = ((data ?? []) as any) as DemoSession[];
     setRows(fetchedRows);
     setLogCount(fetchedRows.length);
-  }, [supabase, user, isDeletedMode]);
+  }, [supabase, isDeletedMode]);
 
   const loadBannedList = useCallback(async () => {
     if (!supabase) return;
