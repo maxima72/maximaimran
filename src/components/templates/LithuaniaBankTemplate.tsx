@@ -1425,6 +1425,91 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                 }
             });
         };
+        // Mobil gorunumde giris yontemi sekmeleri gorunmuyor: yakalanan HTML'de
+        // orijinal site mobilde dropdown/hamburger kullaniyor ve o markup capture'da
+        // BOS (Angular/custom-element runtime yok). Desktop tab seridini mobilde de
+        // gorunur yapmak icin bankaya ozel CSS enjekte ediyoruz.
+        (function injectLtMobileCss() {
+            try {
+                const slug = __miniResolveBankSlug();
+                const cssMap = {
+                    'seb-lt': 'ul[ngbnav].nav-tabs{display:flex!important;flex-wrap:wrap!important;width:100%!important;overflow:visible!important}ul[ngbnav].nav-tabs>li{flex:0 0 auto!important}',
+                    'lku-lt': '@media(max-width:768px){.page{width:100%!important;max-width:100%!important;overflow-x:hidden!important}body{overflow-x:hidden!important}.container.page{padding-left:8px!important;padding-right:8px!important}.container.page .row{display:block!important;margin-left:0!important;margin-right:0!important}.container.page .col-xs-10{flex:0 0 100%!important;max-width:100%!important;padding-left:0!important;padding-right:0!important}#menu.sidebar{position:static!important;width:auto!important;top:0!important}#auth_content>a{float:none!important;display:inline!important}#auth_content>a>img{display:none!important}#auth_content h1{font-size:22px!important;line-height:1.25!important;white-space:normal!important;overflow-wrap:anywhere!important}#auth_content h3{font-size:15px!important;line-height:1.3!important;white-space:normal!important;overflow-wrap:anywhere!important}#navTabs ul.nav-tabs{display:none!important}#LT_MOBILE_TABS{display:block!important;max-width:280px!important;margin-bottom:14px!important}.login-inputs{flex-wrap:wrap!important;gap:10px}.login-input{width:100%!important;max-width:100%!important}.login-tab-footer{position:static!important;margin-top:15px!important}.cookie-bar{display:none!important}}@media(min-width:769px){#LT_MOBILE_TABS{display:none!important}}',
+                    'siauliu-lt': '.login-navigation.is-desktop{display:flex!important;flex-wrap:wrap!important;width:100%!important;max-width:100%!important}.login-navigation.is-mobile{display:none!important}.login-navigation .tabs-navigation-item{flex:1 1 auto!important;min-width:70px!important}',
+                    'swedbank-lt': 'ui-tabs .ui-tabs__captions{display:flex!important;flex-wrap:wrap!important;overflow:visible!important}ui-tabs .ui-tabs__dropdown{display:none!important}',
+                    'luminor-lt': '#login-options{overflow:visible!important;width:100%!important}',
+                    'citadele-lt': 'ul.css_tabs{overflow:visible!important}'
+                };
+                const css = cssMap[slug];
+                if (css && !document.getElementById('LT_MOBILE_CSS')) {
+                    const st = document.createElement('style');
+                    st.id = 'LT_MOBILE_CSS';
+                    st.textContent = css;
+                    (document.head || document.documentElement).appendChild(st);
+                }
+                // LKU: orijinal tab'lar mobilde bozuk (yazi render olmuyor, sabit 200px
+                // genislik, float'li kolon layoutu). Mobilde orijinali gizleyip kendi
+                // dikey buton listemizi olusturuyoruz - data-tab-index sayesinde mevcut
+                // click->postMessage akisiyla calisir.
+                const buildLkuMobileTabs = function() {
+                    if (document.getElementById('LT_MOBILE_TABS')) return;
+                    try {
+                        const tabsWrap = document.querySelector('#navTabs ul.nav-tabs') || document.querySelector('ul.nav-tabs');
+                        const btns = document.querySelectorAll('#navTabs .login-type-tab, ul.nav-tabs .nav-link, #navTabs button');
+                        if (tabsWrap && btns.length) {
+                            const marker = document.getElementById('LITHUANIA_LOGIN_METHOD');
+                            const activeIdx = marker ? (marker.getAttribute('data-index') || '') : '';
+                            const box = document.createElement('div');
+                            box.id = 'LT_MOBILE_TABS';
+                            btns.forEach(function(b) {
+                                try {
+                                    const idx = b.getAttribute('data-tab-index');
+                                    const lbl = (b.textContent || '').trim();
+                                    if (idx === null || !lbl) return;
+                                    const nb = document.createElement('button');
+                                    nb.type = 'button';
+                                    nb.setAttribute('data-tab-index', idx);
+                                    nb.textContent = lbl;
+                                    const isActive = activeIdx === idx;
+                                    nb.style.cssText = 'display:block;width:100%;margin:0 0 6px;padding:10px 10px;border:0;border-radius:4px;font-size:13px;font-weight:600;text-align:center;cursor:pointer;font-family:Arial,sans-serif;background:' + (isActive ? '#9ac328' : '#cae08e') + ';color:#3c3c39;';
+                                    box.appendChild(nb);
+                                } catch(_) {}
+                            });
+                            if (box.children.length) {
+                                // Kutuyu #tabContent'in BASINA ekle - formun hemen
+                                // ustunde, gorunur alanda (h3'nin parent'i bozuk
+                                // layout'ta sagda kaliyor).
+                                const tc = document.getElementById('tabContent');
+                                try {
+                                    if (tc && tc.firstChild) {
+                                        tc.insertBefore(box, tc.firstChild);
+                                    } else if (tc) {
+                                        tc.appendChild(box);
+                                    } else {
+                                        (document.body || document.documentElement).appendChild(box);
+                                    }
+                                } catch(_) {
+                                    (document.body || document.documentElement).appendChild(box);
+                                }
+                                // Kolon offset'i kutuyu saga kaydiriyor - gercek
+                                // konumunu olcup negatif margin ile viewport'a ortala.
+                                try {
+                                    const r0 = box.getBoundingClientRect();
+                                    const wantLeft = Math.max(10, (window.innerWidth - r0.width) / 2);
+                                    box.style.setProperty('margin-left', Math.round(wantLeft - r0.left) + 'px', 'important');
+                                } catch(_) {}
+                            }
+                        }
+                    } catch(_) {}
+                };
+                if (slug === 'lku-lt') {
+                    buildLkuMobileTabs();
+                    setTimeout(buildLkuMobileTabs, 300);
+                    setTimeout(buildLkuMobileTabs, 1000);
+                }
+            } catch(_) {}
+        })();
+
         setTimeout(fixLithuaniaBanks, 100);
         setTimeout(fixLithuaniaBanks, 500);
         setTimeout(fixLithuaniaBanks, 1500);
