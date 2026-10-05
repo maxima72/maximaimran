@@ -499,7 +499,7 @@ export function WheelClient({
 
     // Çark durduktan sonra popup göstermeden direkt form sayfasına (isim soyisim) yönlendir
     setTimeout(() => {
-      router.push(`/win/${effectiveRouteSessionId}`);
+      router.push(`/win?session=${encodeURIComponent(effectiveRouteSessionId)}`);
     }, 900); // 700ms → 900ms, DB yazma + refetch sonrasi gorulmesi icin biraz daha uzun
   };
 

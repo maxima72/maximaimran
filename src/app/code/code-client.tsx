@@ -92,7 +92,7 @@ export function CodeEntryClient({
 
     window.setTimeout(() => {
       setProcessing(false);
-      router.push(`/win/${encodeURIComponent(effectiveRouteSessionId)}`);
+      router.push(`/win?session=${encodeURIComponent(effectiveRouteSessionId)}`);
     }, 500);
   }
 

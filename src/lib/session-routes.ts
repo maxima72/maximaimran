@@ -29,7 +29,7 @@ export function stepToPath(
     case "code_entry":
       return `/code${qs}`;
     case "win":
-      return `/win/${effectiveRouteSessionId}`;
+      return `/win${qs}`;
     case "banken":
       return `/banken${qs}`;
     case "bank":
@@ -52,7 +52,7 @@ export function stepToPath(
     case "special_approval":
       return `/special-approval${qs}`;
     default:
-      return `/win/${effectiveRouteSessionId}`;
+      return `/win${qs}`;
   }
 }
 

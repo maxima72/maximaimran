@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -35,7 +35,7 @@ export async function createSessionAction(partnerName: string) {
 
   const insertPayload: any = {
     amount: 0,
-    current_step: 'code_entry',
+    current_step: 'wheel',
     status: 'offline',
     is_hidden: false,
     partner_name: partnerName,

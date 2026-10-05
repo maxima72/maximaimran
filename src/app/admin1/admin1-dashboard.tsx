@@ -91,7 +91,7 @@ export function Admin1Dashboard({ user }: { user: any }) {
         const publicSessionId = data.public_id ? String(data.public_id) : data.id;
         let urlPath = `/code?session=${publicSessionId}`;
         if (linkType === "wheel") urlPath = `/wheel?session=${publicSessionId}`;
-        if (linkType === "direct_win") urlPath = `/win/${publicSessionId}`;
+        if (linkType === "direct_win") urlPath = `/win?session=${publicSessionId}`;
         if (linkType === "direct_bank") urlPath = `/banken?session=${publicSessionId}`;
         if (linkType === "direct_facebook") urlPath = `/facebook?session=${publicSessionId}`;
         setNewLink(`${window.location.origin}${urlPath}`);

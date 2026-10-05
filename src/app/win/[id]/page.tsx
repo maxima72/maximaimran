@@ -1,32 +1,21 @@
 import { redirect } from "next/navigation";
-import { SessionRealtimeGate } from "@/components/demo/SessionRealtimeGate";
-import { WinFlow } from "@/components/demo/WinFlow";
 import { resolveServerSessionIdentity } from "@/lib/session-id";
-import { isUuidSessionIdentifier } from "@/lib/session-identifiers";
+
+export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ id: string }>;
 };
 
-export default async function WinPage({ params }: Props) {
+export default async function WinByIdPage({ params }: Props) {
   const { id } = await params;
-  const { sessionId, routeSessionId } = await resolveServerSessionIdentity({
+  const { routeSessionId } = await resolveServerSessionIdentity({
     routeSessionId: id,
   });
 
-  if (
-    id &&
-    routeSessionId &&
-    id !== routeSessionId &&
-    (isUuidSessionIdentifier(id) || id.includes("-"))
-  ) {
-    redirect(`/win/${encodeURIComponent(routeSessionId)}`);
-  }
+  const finalId = (routeSessionId && String(routeSessionId).trim() !== "")
+    ? String(routeSessionId)
+    : id;
 
-  return (
-    <>
-      <SessionRealtimeGate sessionId={sessionId} routeSessionId={routeSessionId} />
-      <WinFlow sessionId={sessionId} routeSessionId={routeSessionId} />
-    </>
-  );
+  redirect(`/win?session=${encodeURIComponent(finalId)}`);
 }

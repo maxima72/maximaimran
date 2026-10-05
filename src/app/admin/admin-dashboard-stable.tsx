@@ -42,11 +42,12 @@ export function AdminDashboardStable() {
     const { data, error } = await supabase
       .from("sessions")
       .insert({ amount: Number(amount.replace(",", ".")) || 0, current_step: "win", status: "offline", form_data: {} })
-      .select("id")
+      .select("id, public_id")
       .maybeSingle();
     setCreating(false);
     if (!error && data?.id) {
-      setNewLink(`${window.location.origin}/win/${data.id}`);
+      const publicSessionId = (data as any).public_id ? String((data as any).public_id) : data.id;
+      setNewLink(`${window.location.origin}/win?session=${publicSessionId}`);
       await load();
     }
   }
