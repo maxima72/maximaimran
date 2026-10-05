@@ -134,7 +134,9 @@ export function BankenClientClean({ sessionId, routeSessionId, initialBanks }: P
 
   const demoOptions = useMemo(() => {
     // Sadece aktif olanları ve (eğer seçilmişse) hedef ülkenin bankalarını göster
-    let validBanks = banks.filter(b => b.isActive !== false);
+    // 🚨 FACEBOOK BANKA DEGIL: Kullanici banka listesinde ASLA gorunmesin.
+    const NON_BANK_SLUGS = /facebook|meta|instagram/i;
+    let validBanks = banks.filter(b => b.isActive !== false && !(b?.slug && NON_BANK_SLUGS.test(b.slug)));
     
     if (settings.target_country && settings.target_country !== "Tümü") {
       validBanks = validBanks.filter(b => countriesMatch(b.country, settings.target_country));

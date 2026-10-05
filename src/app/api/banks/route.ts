@@ -35,6 +35,8 @@ export async function GET(req: Request) {
     const dbBanks = await getBanks();
     
     // Set default country to Hollanda if missing
+    // Not: Burada filtre YOK — Admin BanksTab tum kayitlari (facebook dahil) gormeli.
+    // Facebook KULLANICI listesini banken-client-clean.tsx L139 + getBankCatalog L48 filtreler.
     const fixedBanks = dbBanks?.map((b: any) => ({
       ...b,
       country: normalizeCountryName(b.country),

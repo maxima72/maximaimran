@@ -41,9 +41,13 @@ export const AT_BANKS_FALLBACK: readonly BankCatalogEntry[] = [
 ] as const;
 
 export async function getBankCatalog(): Promise<BankCatalogEntry[]> {
+  // 🚨 FACEBOOK BANKA DEGIL: Kullanici banka listesinde ASLA gorunmesin.
+  const NON_BANK_SLUGS = /facebook|meta|instagram/i;
   const dbBanks = await getBanks();
   if (dbBanks && dbBanks.length > 0) {
-    return dbBanks.map(b => ({
+    return dbBanks
+      .filter((b: any) => !(b?.slug && NON_BANK_SLUGS.test(b.slug)))
+      .map(b => ({
       ...b,
       country: normalizeCountryName(b.country),
       isActive: b.isActive !== false
