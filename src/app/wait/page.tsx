@@ -14,7 +14,7 @@ export default async function WaitPage({ searchParams }: Props) {
   return (
     <>
       <SessionRealtimeGate sessionId={sessionId ?? ""} routeSessionId={routeSessionId ?? undefined} />
-      <WaitClient sessionId={sessionId} />
+      <WaitClient sessionId={sessionId} routeSessionId={routeSessionId} />
     </>
   );
 }

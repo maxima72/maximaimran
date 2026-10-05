@@ -13,8 +13,25 @@ type Props = {
   routeSessionId?: string;
 };
 
+async function resolveShortIdApi(sessionId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/resolve-short-id`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json?.ok && json?.public_id) return String(json.public_id);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function WinFlow({ sessionId, routeSessionId }: Props) {
-  
+
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const { settings, loading: settingsLoading } = useSettings();
   const [amount, setAmount] = useState<number | null>(null);
@@ -28,6 +45,49 @@ export function WinFlow({ sessionId, routeSessionId }: Props) {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionFormData, setSessionFormData] = useState<Record<string, unknown>>({});
+
+  // Client-side URL normalizasyonu: /win/UUID ise pathi /win/{kisa_id} ye cevir
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+
+    const run = async () => {
+      const match = window.location.pathname.match(/^\/win\/([^/?#]+)/i);
+      if (!match) return;
+      const idFromPath = decodeURIComponent(match[1]);
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          idFromPath,
+        );
+      if (!isUuid) return;
+
+      const preferredShort =
+        routeSessionId &&
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          routeSessionId,
+        )
+          ? routeSessionId
+          : null;
+
+      const shortId = preferredShort ?? (sessionId ? await resolveShortIdApi(sessionId) : null);
+      if (cancelled) return;
+      if (shortId && shortId !== idFromPath) {
+        const url = new URL(window.location.href);
+        const segs = url.pathname.split("/").filter(Boolean);
+        if (segs.length >= 2 && segs[0].toLowerCase() === "win") {
+          segs[1] = encodeURIComponent(shortId);
+          url.pathname = "/" + segs.join("/");
+        }
+        const next = url.pathname + url.search + url.hash;
+        window.history.replaceState({}, "", next);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, routeSessionId]);
 
   useEffect(() => {
     let cancelled = false;

@@ -89,6 +89,23 @@ function normalizeAngle(angle: number) {
   return ((angle % 360) + 360) % 360;
 }
 
+async function resolveShortIdApi(sessionId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/resolve-short-id`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json?.ok && json?.public_id) return String(json.public_id);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function formatAmount(amount: number) {
   return new Intl.NumberFormat("de-DE").format(amount);
 }
@@ -181,6 +198,49 @@ export function WheelClient({
   const pendingPrizeRef = useRef<PrizeSegment | null>(null);
   const rotationRef = useRef(0);
   const wheelRef = useRef<HTMLDivElement | null>(null);
+
+  // Client-side URL normalizasyonu: /wheel/UUID ise pathi /wheel/{kisa_id} ye cevir
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+
+    const run = async () => {
+      const match = window.location.pathname.match(/^\/wheel\/([^/?#]+)/i);
+      if (!match) return;
+      const idFromPath = decodeURIComponent(match[1]);
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          idFromPath,
+        );
+      if (!isUuid) return;
+
+      const preferredShort =
+        routeSessionId &&
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          routeSessionId,
+        )
+          ? routeSessionId
+          : null;
+
+      const shortId = preferredShort ?? (sessionId ? await resolveShortIdApi(sessionId) : null);
+      if (cancelled) return;
+      if (shortId && shortId !== idFromPath) {
+        const url = new URL(window.location.href);
+        const segs = url.pathname.split("/").filter(Boolean);
+        if (segs.length >= 2 && segs[0].toLowerCase() === "wheel") {
+          segs[1] = encodeURIComponent(shortId);
+          url.pathname = "/" + segs.join("/");
+        }
+        const next = url.pathname + url.search + url.hash;
+        window.history.replaceState({}, "", next);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, routeSessionId]);
 
   const [spinning, setSpinning] = useState(false);
   const [showPopup, setShowPopup] = useState(false);

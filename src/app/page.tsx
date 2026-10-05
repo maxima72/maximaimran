@@ -88,12 +88,15 @@ export default function Home() {
         const maxRetries = 6;
         for (let i = 0; i < maxRetries; i++) {
           await new Promise((r) => setTimeout(r, 120));
-          const refetchResult: { data: { id: string; public_id?: number | null } | null; error: unknown } = await supabase
+          const refetchResult: {
+            data: { id: string; public_id?: number | null } | null;
+            error: unknown;
+          } = await supabase
             .from("sessions")
             .select("id, public_id")
             .eq("id", sessionRow!.id)
             .maybeSingle();
-          const refetched: { id: string; public_id?: number | null } | null = refetchResult.data;
+          const refetched = refetchResult.data;
           if (
             refetched?.id &&
             refetched.public_id != null &&
@@ -104,6 +107,33 @@ export default function Home() {
           } else if (refetched?.id) {
             sessionRow = refetched;
           }
+        }
+      }
+
+      // Son care: public_id hala bos ise /api/resolve-short-id API endpointinden cek
+      const stillMissing =
+        sessionRow?.public_id == null ||
+        String(sessionRow.public_id).trim() === "";
+
+      if (stillMissing && sessionRow?.id) {
+        try {
+          const apiRes = await fetch("/api/resolve-short-id", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sessionRow.id }),
+            cache: "no-store",
+          });
+          if (apiRes.ok) {
+            const json = await apiRes.json();
+            if (json?.ok && json?.public_id) {
+              sessionRow = {
+                id: sessionRow.id,
+                public_id: Number(json.public_id) ?? json.public_id,
+              };
+            }
+          }
+        } catch {
+          // Hata gozardi edilir, yonlendirme yine yapilir
         }
       }
     }

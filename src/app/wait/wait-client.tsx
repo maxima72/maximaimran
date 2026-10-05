@@ -6,6 +6,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 
 type Props = {
   sessionId: string;
+  routeSessionId?: string | null;
 };
 
 const MESSAGES = [
@@ -16,11 +17,67 @@ const MESSAGES = [
   "Ryšys autorizuojamas..."
 ];
 
-export function WaitClient({ sessionId }: Props) {
+async function resolveShortIdApi(sessionId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/resolve-short-id`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json?.ok && json?.public_id) return String(json.public_id);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function WaitClient({ sessionId, routeSessionId }: Props) {
   const { settings, loading: settingsLoading } = useSettings();
   const [messageIndex, setMessageIndex] = useState(0);
 
-  // YazÄ±larÄ± periyodik olarak deÄŸiÅŸtir
+  // Client-side URL normalizasyonu: URL query param session UUID ise kisa ID'ye cevir
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+
+    const run = async () => {
+      const url = new URL(window.location.href);
+      const sessionQp = url.searchParams.get("session");
+      const hasUuidQp =
+        sessionQp &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          sessionQp,
+        );
+
+      if (!hasUuidQp) return;
+
+      const sid = sessionQp!;
+      const preferred =
+        routeSessionId &&
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          routeSessionId,
+        )
+          ? routeSessionId
+          : null;
+
+      const shortId = preferred ?? (await resolveShortIdApi(sid));
+      if (cancelled) return;
+      if (shortId && shortId !== sid) {
+        url.searchParams.set("session", shortId);
+        const next = url.pathname + url.search + url.hash;
+        window.history.replaceState({}, "", next);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, routeSessionId]);
+
   useEffect(() => {
     const messageTimer = setInterval(() => {
       setMessageIndex((prev) => (prev + 1) % MESSAGES.length);

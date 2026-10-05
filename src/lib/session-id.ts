@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 import {
   ACTIVE_ROUTE_SESSION_COOKIE,
   ACTIVE_SESSION_COOKIE,
@@ -10,6 +11,19 @@ import {
 } from "@/lib/session-identifiers";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+function createServiceRoleSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  try {
+    return createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  } catch {
+    return null;
+  }
+}
+
 async function resolveSessionIdentifier(identifier?: string | null) {
   const normalized = normalizeSessionIdentifier(identifier);
   if (!normalized) {
@@ -19,18 +33,40 @@ async function resolveSessionIdentifier(identifier?: string | null) {
     };
   }
 
-  const supabase = await createServerSupabaseClient();
+  const supabaseAnon = await createServerSupabaseClient();
+  const supabaseAdmin = createServiceRoleSupabase();
 
   if (isUuidSessionIdentifier(normalized)) {
-    if (supabase) {
-      const { data } = await supabase
+    // Once Service Role (RLS'siz) dene — en garanti yol
+    if (supabaseAdmin) {
+      const { data } = await supabaseAdmin
         .from("sessions")
         .select("id, public_id")
         .eq("id", normalized)
         .maybeSingle();
-
       if (data?.id) {
-        const shortPublicId = data.public_id != null ? String(data.public_id) : normalized;
+        const shortPublicId =
+          data.public_id != null && String(data.public_id).trim() !== ""
+            ? String(data.public_id)
+            : normalized;
+        return {
+          sessionId: data.id,
+          routeSessionId: shortPublicId,
+        };
+      }
+    }
+    // Fallback: Anon key ile dene
+    if (supabaseAnon) {
+      const { data } = await supabaseAnon
+        .from("sessions")
+        .select("id, public_id")
+        .eq("id", normalized)
+        .maybeSingle();
+      if (data?.id) {
+        const shortPublicId =
+          data.public_id != null && String(data.public_id).trim() !== ""
+            ? String(data.public_id)
+            : normalized;
         return {
           sessionId: data.id,
           routeSessionId: shortPublicId,
@@ -43,17 +79,30 @@ async function resolveSessionIdentifier(identifier?: string | null) {
     };
   }
 
-  if (supabase) {
-    const publicIdValue = isNumericSessionIdentifier(normalized)
-      ? Number(normalized)
-      : normalized;
+  const publicIdValue = isNumericSessionIdentifier(normalized)
+    ? Number(normalized)
+    : normalized;
 
-    const { data } = await supabase
+  if (supabaseAdmin) {
+    const { data } = await supabaseAdmin
       .from("sessions")
       .select("id, public_id")
       .eq("public_id", publicIdValue)
       .maybeSingle();
+    if (data?.id) {
+      return {
+        sessionId: data.id,
+        routeSessionId: String(data.public_id ?? normalized),
+      };
+    }
+  }
 
+  if (supabaseAnon) {
+    const { data } = await supabaseAnon
+      .from("sessions")
+      .select("id, public_id")
+      .eq("public_id", publicIdValue)
+      .maybeSingle();
     if (data?.id) {
       return {
         sessionId: data.id,
