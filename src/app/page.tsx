@@ -13,13 +13,25 @@ export const metadata = {
   icons: {
     icon: "/favicon.ico",
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   metadataBase: new URL(SITE_URL),
   alternates: {
     canonical: "/",
   },
   openGraph: {
     type: "website",
+    determiner: "auto",
     locale: "lt_LT",
+    localeAlternate: ["en_US", "pl_PL", "ru_RU"],
     url: SITE_URL,
     siteName: "Maxima Laimės Ratas",
     title: "Maxima — Laimės Ratas",
@@ -38,10 +50,17 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: SITE_URL,
     title: "Maxima — Laimės Ratas",
     description:
       "Maxima specialioji laimės ratai akcija! Išmėginkite savo sėkmę ir laimėkite išskirtinius prizus.",
     images: [OG_IMAGE_ABSOLUTE],
+  },
+  appLinks: {
+    web: {
+      url: SITE_URL,
+      should_fallback: true,
+    },
   },
 };
 

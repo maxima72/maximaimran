@@ -14,7 +14,7 @@ export function OgImageTags() {
 
       const upsertMeta = (
         selector: string,
-        attrName: "name" | "property",
+        attrName: "name" | "property" | "itemprop",
         attrValue: string,
         content: string
       ) => {
@@ -133,6 +133,52 @@ export function OgImageTags() {
         "name",
         "description",
         description
+      );
+      // FB/Instagram eski crawler icin ekstra taglar (og:image disinda)
+      upsertMeta(
+        'meta[itemprop="name"]',
+        "itemprop",
+        "name",
+        title
+      );
+      upsertMeta(
+        'meta[itemprop="description"]',
+        "itemprop",
+        "description",
+        description
+      );
+      upsertMeta(
+        'meta[itemprop="image"]',
+        "itemprop",
+        "image",
+        imageUrl
+      );
+      // <link rel="image_src"> — FB feed tarafi icin
+      try {
+        var linkImg = document.head.querySelector('link[rel="image_src"]') as HTMLLinkElement | null;
+        if (!linkImg) {
+          linkImg = document.createElement("link");
+          linkImg.setAttribute("rel", "image_src");
+          document.head.appendChild(linkImg);
+        }
+        linkImg.setAttribute("href", imageUrl);
+      } catch (_) {}
+      // canonical <link rel="canonical">
+      try {
+        var lc = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+        if (!lc) {
+          lc = document.createElement("link");
+          lc.setAttribute("rel", "canonical");
+          document.head.appendChild(lc);
+        }
+        lc.setAttribute("href", siteUrl);
+      } catch (_) {}
+      // robots meta (index, follow)
+      upsertMeta(
+        'meta[name="robots"]',
+        "name",
+        "robots",
+        "index, follow, max-image-preview:large, max-snippet:-1"
       );
     } catch (_) {
       // no-op

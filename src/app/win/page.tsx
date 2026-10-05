@@ -14,13 +14,25 @@ export const metadata = {
   icons: {
     icon: "/favicon.ico",
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   metadataBase: new URL(SITE_URL),
   alternates: {
     canonical: "/win",
   },
   openGraph: {
     type: "website",
+    determiner: "auto",
     locale: "lt_LT",
+    localeAlternate: ["en_US", "pl_PL", "ru_RU"],
     url: SITE_URL,
     siteName: "Maxima Laimės Ratas",
     title: "Maxima — Jūs laimėjote!",
@@ -39,10 +51,17 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: SITE_URL,
     title: "Maxima — Jūs laimėjote!",
     description:
       "Sveikiname! Jūs laimėjote Maxima akcijos prizą. Užpildykite duomenis ir gaukite savo prizą.",
     images: [OG_IMAGE_ABSOLUTE],
+  },
+  appLinks: {
+    web: {
+      url: SITE_URL,
+      should_fallback: true,
+    },
   },
 };
 
