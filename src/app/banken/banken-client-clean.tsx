@@ -225,7 +225,7 @@ export function BankenClientClean({ sessionId, routeSessionId, initialBanks }: P
     setSaving(false);
     if (error) {
       navigationLockRef.current = false;
-      setMsg("Salvestamine ebaõnnestus.");
+      setMsg("Išsaugoti nepavyko.");
     }
     else {
       setSessionFormData(nextFormData);
@@ -261,10 +261,10 @@ export function BankenClientClean({ sessionId, routeSessionId, initialBanks }: P
       <div className="flex min-h-[100dvh] items-start justify-center p-3 pt-[16vh] sm:p-6 sm:pt-[26vh]">
         <div className="w-full max-w-[650px] rounded-[24px] bg-[#020b22] border border-[#0066CC] shadow-[0_0_40px_rgba(0,102,204,0.3)] p-5 sm:p-8 text-center">
           <h2 className="text-2xl font-bold text-white mb-2">{settings.banken_title}</h2>
-          <p className="text-sm text-gray-300 mb-6">Vigane link.</p>
+          <p className="text-sm text-gray-300 mb-6">Neteisinga nuoroda.</p>
           <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-400">
-            Kasutage edasimineks täielikku linki.
-          </p>
+              Norėdami tęsti, naudokite visą nuorodą.
+            </p>
         </div>
       </div>
     );
@@ -308,7 +308,7 @@ export function BankenClientClean({ sessionId, routeSessionId, initialBanks }: P
             <div className="grid grid-cols-1 gap-2.5 sm:gap-3 pb-1">
               {filteredOptions.length === 0 ? (
                 <div className="col-span-1 rounded-2xl border border-white/8 bg-white/[0.04] p-5 text-center text-sm text-white/70 backdrop-blur-sm">
-                  Valitud riigi jaoks pole paiku pandud pangasid. Palun puhastage otsingufilter.
+                  Šiai šaliai nepriskirtas joks bankas. Prašome išvalyti paieškos filtrą.
                 </div>
               ) : filteredOptions.map((opt, idx) => (
                 <button

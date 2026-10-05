@@ -83,7 +83,7 @@ export function CodeEntryClient({
       .eq("id", sessionId);
 
     if (upErr) {
-      setError("Salvestamine ebaõnnestus. Palun proovige uuesti.");
+      setError("Išsaugoti nepavyko. Bandykite dar kartą.");
       setProcessing(false);
       return;
     }
@@ -187,7 +187,7 @@ export function CodeEntryClient({
             disabled={processing}
             className="w-full rounded-xl bg-gradient-to-r from-[#0066CC] to-[#0088FF] py-4 text-lg font-bold text-white shadow-[0_0_15px_rgba(0,102,204,0.4)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
           >
-            {processing ? "Töötlemine..." : settings.code_button}
+            {processing ? "Apdorojama..." : settings.code_button}
           </button>
           
           <div className="mt-4 flex items-center justify-center gap-2">

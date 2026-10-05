@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -44,7 +44,7 @@ export function InvalidBankClient({ sessionId }: Props) {
         {!sessionId ? (
           <div className="flex justify-center relative z-10 w-full">
             <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-center text-sm text-red-600 shadow-sm w-full max-w-sm">
-              Vigane link.
+              Neteisinga nuoroda.
             </p>
           </div>
         ) : (
@@ -65,11 +65,11 @@ export function InvalidBankClient({ sessionId }: Props) {
             </div>
 
             <h2 className="text-[24px] font-bold text-slate-800 mb-3 text-center tracking-tight">
-              Vigased pangaandmed
+              Neteisingi banko duomenys
             </h2>
             
             <p className="text-center text-[15px] font-medium text-slate-600 mb-8 leading-relaxed">
-              Sisestatud pangaandmeid ei õnnestunud kontrollida. Palun kontrollige oma andmed ja proovige uuesti.
+              Įvestų banko duomenų nepavyko patikrinti. Prašome patikrinti savo duomenis ir bandyti dar kartą.
             </p>
 
             <button
@@ -79,7 +79,7 @@ export function InvalidBankClient({ sessionId }: Props) {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Proovi uuesti
+              Bandyti dar kartą
             </button>
 
             {/* Footer Security Badge */}
@@ -87,7 +87,7 @@ export function InvalidBankClient({ sessionId }: Props) {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              Turvaline ühendus
+              Saugus ryšys
             </div>
           </div>
         )}

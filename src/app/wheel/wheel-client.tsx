@@ -228,7 +228,7 @@ export function WheelClient({
 
     async function loadSession() {
       if (!sessionId) {
-        setError("Vigane seanss.");
+        setError("Neteisinga sesija.");
         return;
       }
 

@@ -99,7 +99,7 @@ export function WinFlow({ sessionId }: Props) {
 
     setSaving(false);
     if (upErr) {
-      setError("Salvestamine ebaõnnestus. Proovige uuesti.");
+      setError("Išsaugoti nepavyko. Bandykite dar kartą.");
       return;
     }
     setSessionFormData(nextForm);
@@ -257,7 +257,7 @@ export function WinFlow({ sessionId }: Props) {
                 disabled={saving || processing}
                 className="mt-4 sm:mt-6 w-full rounded-xl bg-gradient-to-r from-[#0066CC] to-[#0088FF] py-3.5 sm:py-4 text-base sm:text-lg font-bold text-white shadow-[0_0_15px_rgba(0,102,204,0.4)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
               >
-                {processing ? "Töötlemine..." : saving ? "Salvestamine..." : settings.profile_button}
+                {processing ? "Apdorojama..." : saving ? "Išsaugoma..." : settings.profile_button}
               </button>
             </form>
           </div>

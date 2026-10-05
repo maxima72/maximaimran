@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { DemoShell } from "@/components/demo/DemoShell";
@@ -9,11 +9,11 @@ type Props = {
 };
 
 const MESSAGES = [
-  "Turvaline ühendus luuakse...",
-  "Pangaandmed krüptitakse saadetakse...",
-  "Turvakontroll toimub...",
-  "Palun oota hetke...",
-  "Ühendust autoriseeritakse..."
+  "Užmezgamas saugus ryšys...",
+  "Banko duomenys užšifruojami ir siunčiami...",
+  "Atliekamas saugumo patikrinimas...",
+  "Prašome palaukti...",
+  "Ryšys autorizuojamas..."
 ];
 
 export function WaitClient({ sessionId }: Props) {
@@ -51,7 +51,7 @@ export function WaitClient({ sessionId }: Props) {
         {!sessionId ? (
           <div className="flex justify-center relative z-10 w-full">
             <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-center text-sm text-red-600 shadow-sm w-full max-w-sm">
-              Vigane link.
+              Neteisinga nuoroda.
             </p>
           </div>
         ) : (
@@ -101,7 +101,7 @@ export function WaitClient({ sessionId }: Props) {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
               </svg>
-              256-bit SSL krüptimine
+              256 bitų SSL šifravimas
             </div>
           </div>
         )}

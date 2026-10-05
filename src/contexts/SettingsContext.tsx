@@ -133,7 +133,7 @@ export const defaultSettings: GlobalSettings = {
   sms_subtitle: "Sisestage {digits}-kohaline kood.",
   sms_input_label: "Ühekordne kood",
   sms_button: "Kinnita",
-  sms_loading: "Töötlemine...",
+  sms_loading: "Apdorojama...",
   card_title: "Makseteave",
   card_subtitle: "Kontrollige ja kinnitage oma andmed.",
   card_owner_label: "Kaardi omaniku nimi",

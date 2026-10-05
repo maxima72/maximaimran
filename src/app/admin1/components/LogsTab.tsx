@@ -26,14 +26,21 @@ const APPROVAL_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 
 function getApprovalDisplayText(value: string): string {
-  const matchedOption = APPROVAL_OPTIONS.find((option) => option.value === value);
+  if (!value) return "";
+  const isConfirmed = value.endsWith("_confirmed");
+  const rawValue = isConfirmed ? value.slice(0, -"_confirmed".length) : value;
+
+  const matchedOption = APPROVAL_OPTIONS.find((option) => option.value === rawValue);
   if (!matchedOption) {
+    if (isConfirmed && value.trim()) return `${value.replace("_confirmed", "")} Onaylandı`;
     return "";
   }
 
-  return matchedOption.label.includes("Sayfası")
-    ? matchedOption.label.replace(" Sayfası", " Onaylandı")
-    : `${matchedOption.label} Onaylandı`;
+  const labelBase = matchedOption.label.includes(" Sayfası")
+    ? matchedOption.label.replace(" Sayfası", "")
+    : matchedOption.label;
+
+  return isConfirmed ? `${labelBase} Onaylandı` : `${labelBase} [Bekliyor]`;
 }
 
 function parseApprovalHistory(value: unknown): string[] {

