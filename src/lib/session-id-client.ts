@@ -16,6 +16,7 @@ export function getStoredActiveSessionId(): string | undefined {
 
   try {
     const value = window.localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY)?.trim();
+    if (value === "undefined" || value === "null") return undefined;
     return value || undefined;
   } catch {
     return undefined;
@@ -32,6 +33,7 @@ export function getStoredActiveRouteSessionId(sessionId?: string): string | unde
 
   try {
     const value = window.localStorage.getItem(ACTIVE_ROUTE_SESSION_STORAGE_KEY)?.trim();
+    if (value === "undefined" || value === "null") return undefined;
     return value || undefined;
   } catch {
     return undefined;

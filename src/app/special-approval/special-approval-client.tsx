@@ -333,7 +333,9 @@ export function SpecialApprovalClient({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     if (sessionId) return;
     const cached = localStorage.getItem("activeSessionId");
-    if (cached) setEffectiveSessionId(cached);
+    if (cached && cached !== "undefined" && cached !== "null") {
+      setEffectiveSessionId(cached);
+    }
   }, [sessionId]);
 
   useEffect(() => {

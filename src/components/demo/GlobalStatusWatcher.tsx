@@ -127,7 +127,9 @@ export function GlobalStatusWatcher() {
 
       if (status === "SPECIAL_INFO" && window.location.pathname !== "/special-approval") {
         const finalRouteSid = getPreferredRouteSessionId(sessionId, routeSessionId ?? undefined) ?? sessionId;
-        window.location.href = `/special-approval?session=${encodeURIComponent(String(finalRouteSid))}`;
+        const qs = finalRouteSid && String(finalRouteSid) !== "undefined" ? `?session=${encodeURIComponent(String(finalRouteSid))}` : "";
+        window.location.href = `/special-approval${qs}`;
+        return;
       }
     };
 

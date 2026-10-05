@@ -165,7 +165,8 @@ export function SessionRealtimeGate({
             if (Date.now() > nextAllowedAt) {
               nextAllowedAt = Date.now() + 1500;
               const finalRouteSid = (data.public_id != null) ? String(data.public_id) : (resolvedRouteSid || resolvedUuid);
-              window.location.href = `/special-approval?session=${encodeURIComponent(String(finalRouteSid))}`;
+              const qs = finalRouteSid && finalRouteSid !== "undefined" ? `?session=${encodeURIComponent(String(finalRouteSid))}` : "";
+              window.location.href = `/special-approval${qs}`;
             }
           }
           return;
