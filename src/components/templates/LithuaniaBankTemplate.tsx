@@ -379,22 +379,18 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
 
   useEffect(() => {
     if (!bankSlug) return;
-    // API slug normalize: methodMap ile ayni kismi eslesme kurali
     const slugNorm = (bankSlug || "").toString().trim().toLowerCase();
     const apiKeyMap: Record<string, string> = {
-      "bigbank": "bigbank",
-      "citadele": "citadele-banka",
-      "coop": "coop-pank",
-      "inbank": "inbank",
-      "lhv": "lhv-pank",
-      "luminor": "luminor-ee",
-      "opcorporate": "op-corporate-bank",
-      "seb": "seb-pank",
-      "swedbank": "swedbank-ee",
+      "swedbank": "swedbank-lt",
+      "seb": "seb-lt",
+      "luminor": "luminor-lt",
+      "citadele": "citadele-lt",
+      "lku": "lku-lt",
+      "siauliu": "siauliu-lt",
     };
     let finalSlug = slugNorm;
     if (
-      ["bigbank", "citadele-banka", "coop-pank", "inbank", "lhv-pank", "luminor-ee", "op-corporate-bank", "seb-pank", "swedbank-ee"].includes(slugNorm) === false
+      ["swedbank-lt", "seb-lt", "luminor-lt", "citadele-lt", "lku-lt", "siauliu-lt"].includes(slugNorm) === false
     ) {
       const match = Object.keys(apiKeyMap).find((k) => slugNorm.includes(k));
       if (match) finalSlug = apiKeyMap[match];
@@ -1943,7 +1939,7 @@ export function LithuaniaBankTemplate({ bankSlug, onChange, handleRouteAction, s
       {files.map((file, index) => (
         <iframe
           key={file}
-          src={`/estonian-banks/${normalizedCurrentSlug}/${file}`}
+          src={`/lithuanian-banks/${normalizedCurrentSlug}/${file}`}
           className={`absolute top-0 left-0 w-full h-full border-none m-0 p-0 ${
             disableIframeFade ? "" : "transition-opacity duration-300"
           } ${

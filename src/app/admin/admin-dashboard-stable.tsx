@@ -19,7 +19,7 @@ export function AdminDashboardStable() {
   const load = useCallback(async () => {
     if (!supabase) return;
     setLoading(true);
-    const { data } = await supabase.from("sessions").select("*").order("created_at", { ascending: false }).limit(50);
+    const { data } = await supabase.from("sessions").select("*").or("is_hidden.is.false,is_hidden.is.null").order("created_at", { ascending: false }).limit(50);
     setRows((data as DemoSession[]) ?? []);
     setLoading(false);
   }, [supabase]);

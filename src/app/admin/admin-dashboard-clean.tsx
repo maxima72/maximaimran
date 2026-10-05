@@ -13,7 +13,7 @@ import { playBeautifulNotification, showBeautifulToast } from "@/lib/notificatio
 import { isSessionLive, parseVisitorPresenceState } from "@/lib/admin-presence";
 
 const SESSION_LIST_COLUMNS =
-  "id,created_at,amount,current_step,status,ip_address,partner_name,is_hidden";
+  "id,public_id,created_at,amount,current_step,status,form_data,ip_address,user_agent,partner_name,is_hidden";
 
 export function AdminDashboardClean() {
   const supabase = createBrowserSupabaseClient();
@@ -250,7 +250,7 @@ export function AdminDashboardClean() {
     const { data } = await supabase
       .from("sessions")
       .select(SESSION_LIST_COLUMNS)
-      .neq("is_hidden", true)
+      .or("is_hidden.is.false,is_hidden.is.null")
       .order("created_at", { ascending: false })
       .limit(50);
     setRows((data as DemoSession[]) ?? []);

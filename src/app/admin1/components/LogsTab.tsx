@@ -876,7 +876,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
     if (isDeletedMode) {
       query = query.eq("is_hidden", true);
     } else {
-      query = query.neq("is_hidden", true);
+      query = query.or("is_hidden.is.false,is_hidden.is.null");
     }
     query = query.order("created_at", { ascending: false });
 
