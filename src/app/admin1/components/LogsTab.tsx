@@ -959,23 +959,24 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
     const { data } = await supabase
       .from("banned_ips")
       .select("*")
-      .order("created_at", { ascending: false })
+      .order("banned_at", { ascending: false })
       .limit(200);
     setBannedList((data as any[]) ?? []);
-    supabase.from("banned_ips").select("id", { count: 'exact' }).then(({ count }) => {
+    supabase.from("banned_ips").select("ip_address", { count: 'exact', head: true }).then(({ count }) => {
       setBannedCount(count ?? 0);
     });
     setLoadingBanned(false);
   }, [supabase]);
 
-  const handleUnban = async (bannedId: string) => {
+  const handleUnban = async (ipAddress: string) => {
     if (!supabase) return;
-    const ok = confirm("Bu IP yasağını kaldırmak istediğinize emin misiniz?");
+    const ok = confirm(`"${ipAddress}" IP yasağını kaldırmak istediğinize emin misiniz?`);
     if (!ok) return;
-    const { error } = await supabase.from("banned_ips").delete().eq("id", bannedId);
+    const { error } = await supabase.from("banned_ips").delete().eq("ip_address", ipAddress);
     if (error) alert("Ban kaldırılırken hata: " + error.message);
     else {
-      void loadBannedList();
+      setBannedList((prev) => prev.filter((b) => b.ip_address !== ipAddress));
+      setBannedCount((c) => Math.max(0, c - 1));
       alert("Ban başarıyla kaldırıldı!");
     }
   };
@@ -1000,7 +1001,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
     if (!supabase) return;
 
     // Banned count
-    supabase.from("banned_ips").select("id", { count: 'exact' }).then(({ count }) => {
+    supabase.from("banned_ips").select("ip_address", { count: 'exact', head: true }).then(({ count }) => {
       setBannedCount(count ?? 0);
     });
 
@@ -1194,11 +1195,21 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
       if (row && row.ip_address) {
         const confirmBan = confirm(`Bu IP adresi (${row.ip_address}) tamamen engellenecek. Onaylıyor musunuz?`);
         if (confirmBan) {
-          await supabase.from('banned_ips').insert({
+          const { error: banError } = await supabase.from('banned_ips').insert({
             ip_address: row.ip_address,
             reason: `Admin tarafından engellendi (Session: ${sessionId})`
           });
-          alert("IP adresi başarıyla engellendi!");
+          if (banError) {
+            if (banError.code === "23505" || /duplicate|already exists/i.test(banError.message || "")) {
+              alert("Bu IP adresi zaten engelli.");
+            } else {
+              alert("IP engellenirken hata: " + banError.message);
+            }
+          } else {
+            setBannedCount((c) => c + 1);
+            if (showBannedListModal) void loadBannedList();
+            alert("IP adresi başarıyla engellendi!");
+          }
         }
       } else {
         alert("Bu kullanıcının IP adresi henüz sisteme yansımamış.");
@@ -2634,7 +2645,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
                 <div className={`divide-y ${darkMode ? 'divide-zinc-800' : 'divide-gray-100'}`}>
                   {bannedList.map((ban) => (
                     <div
-                      key={ban.id}
+                      key={ban.ip_address}
                       className={`flex items-start gap-4 p-4 transition-all ${darkMode ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'}`}
                     >
                       {/* IP + Detay */}
@@ -2653,16 +2664,16 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
                             {ban.reason}
                           </div>
                         )}
-                        {ban.created_at && (
+                        {(ban.banned_at || ban.created_at) && (
                           <div className={`text-[10px] opacity-60 font-mono mt-1 ${darkMode ? 'text-zinc-500' : 'text-gray-500'}`}>
-                            📅 {new Date(ban.created_at).toLocaleString('tr-TR')}
+                            📅 {new Date(ban.banned_at || ban.created_at).toLocaleString('tr-TR')}
                           </div>
                         )}
                       </div>
 
                       {/* UNBAN BUTONU */}
                       <button
-                        onClick={() => void handleUnban(ban.id)}
+                        onClick={() => void handleUnban(ban.ip_address)}
                         className="shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2 text-[11px] font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95 bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white border border-green-500/20"
                         title="Bu IP yasağını kaldır"
                       >

@@ -67,7 +67,7 @@ export async function proxy(request: NextRequest) {
       .from('banned_ips')
       .select('ip_address')
       .eq('ip_address', ip)
-      .single()
+      .maybeSingle()
 
     if (bannedIp) {
       return new NextResponse(
