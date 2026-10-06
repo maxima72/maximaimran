@@ -86,13 +86,13 @@ export function OgImageTags() {
         'meta[property="og:image:width"]',
         "property",
         "og:image:width",
-        "1200"
+        "1254"
       );
       upsertMeta(
         'meta[property="og:image:height"]',
         "property",
         "og:image:height",
-        "630"
+        "1254"
       );
       upsertMeta(
         'meta[property="og:image:alt"]',

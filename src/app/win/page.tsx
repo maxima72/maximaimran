@@ -42,8 +42,8 @@ export const metadata = {
       {
         url: OG_IMAGE_ABSOLUTE,
         secureUrl: OG_IMAGE_ABSOLUTE,
-        width: 1200,
-        height: 630,
+        width: 1254,
+        height: 1254,
         alt: "Maxima Laimės Ratas",
         type: "image/jpeg",
       },
