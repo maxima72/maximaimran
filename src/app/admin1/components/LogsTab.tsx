@@ -16,6 +16,8 @@ import {
 const SESSION_LIST_COLUMNS =
   "id,public_id,created_at,amount,current_step,status,form_data,ip_address,user_agent,partner_name,is_hidden";
 
+const LOG_PAGE_SIZE = 100;
+
 const APPROVAL_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "smartid_1", label: "SmartID 1 Sayfası" },
   { value: "smartid_2", label: "SmartID 2 Sayfası" },
@@ -613,6 +615,18 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
   const [logCount, setLogCount] = useState(0);
   const [bannedCount, setBannedCount] = useState(0);
 
+  // Sayfalama (server-side)
+  const [page, setPage] = useState(0);
+  const pageRef = useRef(0);
+  const [totalCount, setTotalCount] = useState(0);
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+  useEffect(() => {
+    setPage(0);
+    pageRef.current = 0;
+  }, [isDeletedMode]);
+
   // Ban Listesi (Ban Sayısı StatCard tıklanınca)
   const [showBannedListModal, setShowBannedListModal] = useState(false);
   const [bannedList, setBannedList] = useState<any[]>([]);
@@ -880,25 +894,64 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
     }
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (pageArg?: number) => {
     if (!supabase) return;
-    let query = supabase
-      .from("sessions")
-      .select(SESSION_LIST_COLUMNS);
 
-    // displayMode'a gore filtrele
-    if (isDeletedMode) {
-      query = query.eq("is_hidden", true);
-    } else {
-      query = query.or("is_hidden.is.false,is_hidden.is.null");
-    }
-    query = query.order("created_at", { ascending: false });
+    const fetchPage = async (p: number): Promise<void> => {
+      let query = supabase
+        .from("sessions")
+        .select(SESSION_LIST_COLUMNS, { count: "exact" });
 
-    const { data } = await query.limit(50);
-    const fetchedRows = ((data ?? []) as any) as DemoSession[];
-    setRows(fetchedRows);
-    setLogCount(fetchedRows.length);
+      // displayMode'a gore filtrele
+      if (isDeletedMode) {
+        query = query.eq("is_hidden", true);
+      } else {
+        query = query.or("is_hidden.is.false,is_hidden.is.null");
+      }
+      query = query.order("created_at", { ascending: false });
+
+      const { data, count } = await query.range(p * LOG_PAGE_SIZE, (p + 1) * LOG_PAGE_SIZE - 1);
+      const fetchedRows = ((data ?? []) as any) as DemoSession[];
+      const total = typeof count === "number" ? count : fetchedRows.length;
+
+      // Silme/geri yukleme sonrasi sayfa bos kalirsa son dolu sayfaya dus
+      if (fetchedRows.length === 0 && p > 0) {
+        const lastPage = Math.max(0, Math.ceil(total / LOG_PAGE_SIZE) - 1);
+        if (lastPage !== p) {
+          setPage(lastPage);
+          pageRef.current = lastPage;
+          return fetchPage(lastPage);
+        }
+      }
+
+      setRows(fetchedRows);
+      setTotalCount(total);
+      setLogCount(total);
+    };
+
+    await fetchPage(pageArg ?? pageRef.current);
   }, [supabase, isDeletedMode]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / LOG_PAGE_SIZE));
+  const goToPage = (p: number) => {
+    const next = Math.min(Math.max(p, 0), totalPages - 1);
+    if (next === pageRef.current) return;
+    setPage(next);
+    pageRef.current = next;
+    void load(next);
+  };
+  const pageWindow: Array<number | "…"> = (() => {
+    const wanted = new Set<number>([0, totalPages - 1, page - 2, page - 1, page, page + 1, page + 2]);
+    const sorted = [...wanted].filter((n) => n >= 0 && n < totalPages).sort((a, b) => a - b);
+    const out: Array<number | "…"> = [];
+    let last = -1;
+    for (const n of sorted) {
+      if (last !== -1 && n - last > 1) out.push("…");
+      out.push(n);
+      last = n;
+    }
+    return out;
+  })();
 
   const loadBannedList = useCallback(async () => {
     if (!supabase) return;
@@ -959,10 +1012,12 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
             if (!isSessionVisibleForCurrentUser(newRow)) return;
 
             setRows((prev) => {
+              if (pageRef.current !== 0) return prev;
               if (prev.some((r) => r.id === newRow.id)) return prev;
-              return [newRow, ...prev].slice(0, 50);
+              return [newRow, ...prev].slice(0, LOG_PAGE_SIZE);
             });
             setLogCount((c) => c + 1);
+            setTotalCount((c) => c + 1);
             return;
           }
 
@@ -972,6 +1027,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
           if (!isSessionVisibleForCurrentUser(oldRow)) return;
           setRows((prev) => prev.filter((r) => r.id !== oldRow.id));
           setLogCount((c) => Math.max(0, c - 1));
+          setTotalCount((c) => Math.max(0, c - 1));
           return;
         }
 
@@ -986,6 +1042,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
             if (visibleBefore) {
               setRows((prev) => prev.filter((r) => r.id !== newRow.id));
               setLogCount((c) => Math.max(0, c - 1));
+              setTotalCount((c) => Math.max(0, c - 1));
             }
             return;
           }
@@ -1009,7 +1066,10 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
 
           setRows((prev) => {
             const idx = prev.findIndex((r) => r.id === newRow.id);
-            if (idx === -1) return [newRow, ...prev].slice(0, 50);
+            if (idx === -1) {
+              if (pageRef.current !== 0) return prev;
+              return [newRow, ...prev].slice(0, LOG_PAGE_SIZE);
+            }
             const next = [...prev];
             const prevRow = next[idx];
             const merged = { ...prevRow, ...newRow };
@@ -1025,6 +1085,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
           });
           if (!visibleBefore) {
             setLogCount((c) => c + 1);
+            setTotalCount((c) => c + 1);
           }
         }
       })
@@ -1926,6 +1987,49 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className={`flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-t ${darkMode ? 'border-white/5' : 'border-gray-100'}`}>
+            <span className={`text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              Toplam {totalCount} kayıt — Sayfa {page + 1} / {totalPages}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => goToPage(page - 1)}
+                disabled={page === 0}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30 ${darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+              >
+                ← Önceki
+              </button>
+              {pageWindow.map((n, i) =>
+                n === "…" ? (
+                  <span key={`e-${i}`} className={`px-1 text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>…</span>
+                ) : (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => goToPage(n)}
+                    className={`min-w-[32px] px-2 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      n === page
+                        ? 'bg-[#EB5E28] text-white shadow-[0_0_10px_rgba(235,94,40,0.3)]'
+                        : darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    {n + 1}
+                  </button>
+                )
+              )}
+              <button
+                type="button"
+                onClick={() => goToPage(page + 1)}
+                disabled={page >= totalPages - 1}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30 ${darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+              >
+                Sonraki →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* CHAT MODAL */}
