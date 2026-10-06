@@ -46,12 +46,44 @@ export function GeneralSettingsTab({ darkMode }: { darkMode: boolean }) {
     }
   }
 
+  const DEFAULTS = {
+    logo_url: "/form-assets/maxima-mini-logo.png",
+    bg_url: "/form-assets/bg-desktop.png",
+    bg_url_mobile: "/form-assets/bg-mobile.png",
+    og_image_url: "https://maxima.onnemang.store/og-image.jpg",
+    portal_name: "Maxima klientų portalas",
+    support_center_name: "Maxima klientų aptarnavimas",
+  };
+
   const fetchSettings = async () => {
     if (!supabase) return;
     setLoading(true);
     const { data } = await supabase.from("global_settings").select("*").limit(1).single();
-    if (data) setSettings(data);
+    if (data) {
+      const ws = data.wheel_settings || {};
+      setSettings({
+        ...data,
+        logo_url: data.logo_url || DEFAULTS.logo_url,
+        bg_url: data.bg_url || DEFAULTS.bg_url,
+        og_image_url: data.og_image_url || DEFAULTS.og_image_url,
+        portal_name: data.portal_name || DEFAULTS.portal_name,
+        support_center_name: data.support_center_name || DEFAULTS.support_center_name,
+        wheel_settings: { ...ws, bg_url_mobile: ws.bg_url_mobile || DEFAULTS.bg_url_mobile },
+      });
+    }
     setLoading(false);
+  };
+
+  const applyDefaults = () => {
+    setSettings((prev: any) => ({
+      ...prev,
+      logo_url: DEFAULTS.logo_url,
+      bg_url: DEFAULTS.bg_url,
+      og_image_url: DEFAULTS.og_image_url,
+      portal_name: DEFAULTS.portal_name,
+      support_center_name: DEFAULTS.support_center_name,
+      wheel_settings: { ...(prev?.wheel_settings || {}), bg_url_mobile: DEFAULTS.bg_url_mobile },
+    }));
   };
 
   useEffect(() => {
@@ -149,6 +181,13 @@ export function GeneralSettingsTab({ darkMode }: { darkMode: boolean }) {
             <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Sitenin genel tasarımını, logo ve arkaplanını değiştirin</p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={applyDefaults}
+          className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm border ${darkMode ? 'bg-white/10 hover:bg-white/20 border-white/5 text-white' : 'bg-white hover:bg-gray-50 border-gray-200 text-gray-700'}`}
+        >
+          Varsayılanları Yükle
+        </button>
       </div>
 
       <form onSubmit={handleSave} className="space-y-8">
