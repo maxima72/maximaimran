@@ -67,6 +67,7 @@ export function GeneralSettingsTab({ darkMode }: { darkMode: boolean }) {
       .update({
         logo_url: settings.logo_url,
         bg_url: settings.bg_url,
+        og_image_url: settings.og_image_url,
         portal_name: settings.portal_name,
         support_center_name: settings.support_center_name,
         wheel_settings: settings.wheel_settings
@@ -105,6 +106,9 @@ export function GeneralSettingsTab({ darkMode }: { darkMode: boolean }) {
       }
       if (key === "logo_url") {
         file = await compressImage(file, { maxWidth: 512, maxHeight: 512, quality: 0.9 });
+      }
+      if (key === "og_image_url") {
+        file = await compressImage(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.85 });
       }
       if (key === "wheel_settings.bg_url_mobile") {
         file = await compressImage(file, { maxWidth: 1080, maxHeight: 1920, quality: 0.82 });
@@ -236,6 +240,38 @@ export function GeneralSettingsTab({ darkMode }: { darkMode: boolean }) {
                     }} disabled={!!uploading} />
                   </label>
                 </div>
+              </div>
+            </div>
+
+            <div className="flex gap-5 items-center border-b border-black/5 dark:border-white/5 pb-8">
+              <div className={`w-24 h-24 shrink-0 rounded-2xl border flex items-center justify-center overflow-hidden relative shadow-inner ${darkMode ? 'bg-black/40 border-white/10' : 'bg-gray-100 border-gray-200'}`}>
+                {settings.og_image_url ? <img src={settings.og_image_url} alt="" className="absolute inset-0 w-full h-full object-cover opacity-80" /> : <span className="text-xs opacity-50 font-medium text-center px-1">Varsayılan</span>}
+              </div>
+              <div className="flex-1 space-y-2.5">
+                <label className={`block text-[11px] font-bold opacity-80 uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Sosyal Medya Paylaşım Resmi (Facebook / WhatsApp / Instagram Önizlemesi)</label>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={settings.og_image_url || ""}
+                    onChange={e => handleChange("og_image_url", e.target.value)}
+                    placeholder="Boş bırakılırsa varsayılan resim kullanılır"
+                    className={`flex-1 px-4 py-2.5 rounded-xl text-sm outline-none transition-all ${darkMode ? 'bg-black/20 text-white border border-white/10 focus:border-[#EB5E28]' : 'bg-gray-50 border border-gray-200 focus:border-[#EB5E28]'}`}
+                  />
+                  <label className={`px-5 py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-all active:scale-95 shadow-sm border ${darkMode ? 'bg-white/10 hover:bg-white/20 border-white/5 text-white' : 'bg-white hover:bg-gray-50 border-gray-200 text-gray-700'}`}>
+                    {uploading === "og_image_url" ? "..." : "Yükle"}
+                    <input type="file" accept="image/*" className="hidden" onChange={e => handleUpload(e, "og_image_url")} disabled={!!uploading} />
+                  </label>
+                  {settings.og_image_url && (
+                    <button
+                      type="button"
+                      onClick={() => handleChange("og_image_url", "")}
+                      className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm border ${darkMode ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/20 text-red-400' : 'bg-red-50 hover:bg-red-100 border-red-200 text-red-600'}`}
+                    >
+                      Varsayılana Dön
+                    </button>
+                  )}
+                </div>
+                <p className={`text-[11px] ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Link paylaşıldığında görünen resim. Kaydettikten sonra Facebook'ta yansıması için developers.facebook.com/tools/debug adresinden "Scrape Again" yapın.</p>
               </div>
             </div>
 

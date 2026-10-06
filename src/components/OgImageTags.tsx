@@ -1,12 +1,31 @@
 "use client";
 
 import { useEffect } from "react";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export function OgImageTags() {
   useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
     try {
       const SITE_URL = "https://maxima.onnemang.store";
-      const imageUrl = `${SITE_URL}/og-image.jpg`;
+      let imageUrl = `${SITE_URL}/og-image.jpg`;
+
+      try {
+        const supabase = createBrowserSupabaseClient();
+        if (supabase) {
+          const { data } = await supabase
+            .from("global_settings")
+            .select("og_image_url")
+            .limit(1)
+            .single();
+          if (!cancelled && typeof data?.og_image_url === "string" && data.og_image_url.trim() !== "") {
+            imageUrl = data.og_image_url.trim();
+          }
+        }
+      } catch {}
+      if (cancelled) return;
       const title = "Maxima — Laimės Ratas";
       const description =
         "Maxima specialioji laimės ratai akcija! Išmėginkite savo sėkmę ir laimėkite išskirtinius prizus.";
@@ -183,6 +202,10 @@ export function OgImageTags() {
     } catch (_) {
       // no-op
     }
+    };
+
+    run();
+    return () => { cancelled = true; };
   }, []);
 
   return null;
