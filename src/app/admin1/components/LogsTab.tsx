@@ -1429,7 +1429,18 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
           { stack: cardCell },
           { stack: fbCell },
           s(r.ip_address) || "-",
-          { text: s(r.user_agent) || "-", fontSize: 5.5, color: "#6b7280" },
+          (() => {
+            const ua = s(r.user_agent);
+            if (!ua) return { text: "-", color: "#9ca3af" };
+            const info = parseUserAgent(ua);
+            const modelTxt = info.model && !/masaüstü|tespit edilemedi/i.test(info.model) ? ` • ${info.model}` : "";
+            return {
+              stack: [
+                { text: `${info.device} • ${info.os} • ${info.browser}${modelTxt}`, bold: true, fontSize: 6.5 },
+                { text: ua, fontSize: 5, color: "#6b7280" },
+              ],
+            };
+          })(),
         ]);
       }
 
@@ -1461,11 +1472,25 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
           if (l > colMax[i]) colMax[i] = l;
         });
       }
-      // char basina ~3.6pt @7pt font; min 28pt, uzun kolonlar 170pt'de kirilir (wrap)
-      const desired = colMax.map((l) => Math.min(Math.max(l * 3.6 + 8, 28), 170));
+      // char basina ~3.6pt @7pt font; min 28pt, uzun kolonlar 170pt'de kirilir (wrap).
+      // Toplam sayfadan kucukse kalan bosluk, cap'e carpan kolonlara orantisal dagitilir.
       const usable = 802; // A4 landscape - margins
-      const scale = desired.reduce((a, b) => a + b, 0) > usable ? usable / desired.reduce((a, b) => a + b, 0) : 1;
-      const widths = desired.map((w) => Math.max(w * scale, 20));
+      const cap = 170;
+      const want = colMax.map((l) => l * 3.6 + 8); // sinirsiz istek
+      const desired = want.map((w) => Math.min(Math.max(w, 28), cap));
+      const used = desired.reduce((a, b) => a + b, 0);
+      let widths: number[];
+      if (used < usable) {
+        const overflow = want.map((w) => Math.max(w - cap, 0));
+        const totalOv = overflow.reduce((a, b) => a + b, 0);
+        const leftover = usable - used;
+        widths = desired.map((w, i) =>
+          totalOv > 0 ? w + (leftover * overflow[i]) / totalOv : w
+        );
+      } else {
+        const sc = usable / used;
+        widths = desired.map((w) => Math.max(w * sc, 20));
+      }
 
       const doc: any = {
         pageSize: "A4",
