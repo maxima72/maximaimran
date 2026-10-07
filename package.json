@@ -20,6 +20,7 @@
     "next": "16.2.4",
     "openai": "^6.47.0",
     "pdfjs-dist": "4.10.38",
+    "pdfmake": "^0.2.23",
     "pg": "^8.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -28,6 +29,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",
+    "@types/pdfmake": "^0.3.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "archiver": "^7.0.1",

