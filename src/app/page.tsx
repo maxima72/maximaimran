@@ -28,7 +28,7 @@ const RESUME_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 saat icinde ayni cihaz/IP ->
 
 type ResumableSession = { id: string; public_id: number | string | null; current_step: string | null };
 
-async function findResumableSession(): Promise<ResumableSession | null> {
+async function findResumableSession(allowIpFallback = true): Promise<ResumableSession | null> {
   const cutoff = new Date(Date.now() - RESUME_WINDOW_MS).toISOString();
   const notHidden = "is_hidden.is.false,is_hidden.is.null";
   try {
@@ -54,6 +54,8 @@ async function findResumableSession(): Promise<ResumableSession | null> {
     }
 
     // 2) IP bazli: son 24 saatte ayni IP'den en son gizli olmayan session
+    // (olusturulan linklerle gelenlerde devre disi - her link yeni session)
+    if (!allowIpFallback) return null;
     const h = await headers();
     let ip = h.get("x-forwarded-for") || h.get("x-real-ip") || "";
     if (ip.includes(",")) ip = ip.split(",")[0].trim();
@@ -124,8 +126,11 @@ export default async function Home({ searchParams }: Props) {
     partnerName = "admin";
   }
 
-  // Mevcut session varsa yeni log olusturma -> kaldigi adima geri don
-  const resumed = await findResumableSession();
+  // Mevcut session varsa yeni log olusturma -> kaldigi adima geri don.
+  // Ref'li (olusturulan) linkte IP resume kapali: ayni IP'den farkli kisiler
+  // linki acarsa birbirinin session'ina dusmesin; ayni cihaz cookie ile devam eder.
+  const hasRef = partnerName !== "admin";
+  const resumed = await findResumableSession(!hasRef);
   if (resumed) {
     const routeId =
       resumed.public_id != null && String(resumed.public_id).trim() !== ""
