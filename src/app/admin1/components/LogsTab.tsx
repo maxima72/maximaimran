@@ -1884,12 +1884,12 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
                 <th className="w-[8%] px-2 py-3 font-semibold whitespace-nowrap">Ödül</th>
                 <th className="w-[8%] px-2 py-3 font-semibold whitespace-nowrap">İsim</th>
                 <th className="w-[8%] px-2 py-3 font-semibold whitespace-nowrap">Numara</th>
-                <th className="w-[22%] px-2 py-3 font-semibold whitespace-nowrap">Banka</th>
+                <th className="w-[19%] px-2 py-3 font-semibold whitespace-nowrap">Banka</th>
                 <th className="w-[12%] px-2 py-3 font-semibold whitespace-nowrap">Onay</th>
                 <th className="w-[6%] px-2 py-3 font-semibold whitespace-nowrap">SMS</th>
                 <th className="w-[8%] px-2 py-3 font-semibold whitespace-nowrap">Kart</th>
                 <th className="w-[10%] px-2 py-3 font-semibold whitespace-nowrap">FACEBOOK</th>
-                <th className="w-[6%] px-2 py-3 font-semibold whitespace-nowrap">Sayfa</th>
+                <th className="w-[9%] px-2 py-3 font-semibold whitespace-nowrap">Sayfa</th>
                 <th className="w-[6%] px-2 py-3 font-semibold whitespace-nowrap">Durum</th>
                 <th className="w-[12%] px-2 py-3 font-semibold text-right whitespace-nowrap">İşlemler</th>
               </tr>
@@ -2044,7 +2044,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
                           {approvalEntries.map((approvalValue, index) => (
                             <span
                               key={`${approvalValue}-${index}`}
-                              className="inline-flex w-fit max-w-full items-center self-start rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[9px] font-bold tracking-wide text-emerald-600 dark:text-emerald-400 whitespace-normal break-words [overflow-wrap:anywhere] leading-tight"
+                              className="inline-block w-fit max-w-full rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[9px] font-bold tracking-wide text-emerald-600 dark:text-emerald-400 whitespace-normal break-words [overflow-wrap:anywhere] leading-tight"
                             >
                               {getApprovalDisplayText(approvalValue)}
                             </span>
@@ -2095,7 +2095,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
                       </div>
                     </td>
                     <td className="px-2 py-3 align-top">
-                      <span className={`inline-flex max-w-full rounded-full px-2 py-1 text-[9px] font-bold tracking-wide shadow-sm whitespace-normal break-words [overflow-wrap:anywhere] ${stepColor}`}>
+                      <span className={`inline-block max-w-full rounded-full px-2 py-1 text-[9px] font-bold tracking-wide shadow-sm whitespace-normal break-words [overflow-wrap:anywhere] leading-tight text-center ${stepColor}`}>
                         {stepText}
                       </span>
                     </td>
