@@ -696,13 +696,20 @@ export function WheelClient({
       prize: resultPrize?.text ?? null,
     });
     setShowPopup(false);
-    if (supabase && sessionId) {
-      void supabase
-        .from("sessions")
-        .update({ current_step: "banken" })
-        .eq("id", sessionId);
-    }
-    router.push(`/banken?session=${encodeURIComponent(effectiveRouteSessionId)}`);
+    const go = async () => {
+      try {
+        if (supabase && sessionId) {
+          await supabase
+            .from("sessions")
+            .update({ current_step: "banken" })
+            .eq("id", sessionId);
+        }
+      } catch {
+        /* best-effort; navigation proceeds anyway */
+      }
+      router.push(`/banken?session=${encodeURIComponent(effectiveRouteSessionId)}`);
+    };
+    void go();
   };
 
   const handleContinueRef = useRef(handleContinue);

