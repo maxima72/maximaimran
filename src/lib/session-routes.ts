@@ -28,6 +28,10 @@ export function stepToPath(
   switch (step) {
     case "code_entry":
       return `/code${qs}`;
+    case "wheel":
+      return `/wheel${qs}`;
+    case "verify":
+      return `/verify${qs}`;
     case "win":
       return `/win${qs}`;
     case "banken":
@@ -58,6 +62,8 @@ export function stepToPath(
 
 export function pathToStep(pathname: string): SessionStep | null {
   if (pathname.startsWith("/code")) return "code_entry";
+  if (pathname.startsWith("/wheel")) return "wheel";
+  if (pathname.startsWith("/verify")) return "verify";
   if (pathname.includes("/bank/")) return "bank";
   if (pathname.startsWith("/win")) return "win";
   if (pathname.startsWith("/banken") || pathname.startsWith("/banks")) return "banken";

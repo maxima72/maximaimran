@@ -35,7 +35,7 @@ export async function createSessionAction(partnerName: string) {
 
   const insertPayload: any = {
     amount: 0,
-    current_step: 'wheel',
+    current_step: 'win',
     status: 'offline',
     is_hidden: false,
     partner_name: partnerName,

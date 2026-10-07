@@ -1,5 +1,7 @@
 export type SessionStep =
   | "code_entry"
+  | "wheel"
+  | "verify"
   | "win"
   | "bank"
   | "banken"

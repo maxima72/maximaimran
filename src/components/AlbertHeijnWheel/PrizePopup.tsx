@@ -22,6 +22,7 @@ type Props = {
   result: PrizePopupResult | null;
   amountLine: string;
   description: string;
+  userName?: string | null;
   continueButtonRef: RefObject<HTMLButtonElement | null>;
   onClose: () => void;
 };
@@ -29,9 +30,11 @@ type Props = {
 const POPUP_CONFIG = {
   desktop: {
     src: "/popup-assets/popup-desktop.png",
-    amountBoxClassName: "absolute left-[20%] top-[52%] flex h-[12%] w-[60%] items-center justify-center px-[4%]",
-    ctaClassName: "absolute left-[28%] top-[68%] h-[10%] w-[44%] rounded-full",
-    closeClassName: "absolute right-[4%] top-[3%] h-[8%] w-[8%] rounded-full",
+    nameBoxClassName: "absolute left-[8%] top-[34.5%] flex h-[8.5%] w-[55%] items-center px-[1%]",
+    nameFontSize: "clamp(1.4rem, 2.8vw, 2.4rem)",
+    amountBoxClassName: "absolute left-[7%] top-[53.5%] flex h-[11%] w-[86%] items-center justify-center px-[4%]",
+    ctaClassName: "absolute left-[7%] top-[67%] h-[11%] w-[86%] rounded-full",
+    closeClassName: "absolute right-[2.5%] top-[7.5%] h-[7.5%] w-[6%] rounded-full",
     amountFontSize: (label: string) =>
       label.length >= 6 ? "clamp(1.5rem, 3vw, 2.5rem)" : label.length >= 5 ? "clamp(2rem, 3.5vw, 3rem)" : "clamp(2.5rem, 4.5vw, 3.5rem)",
     messageFontSize: "clamp(1.5rem, 2.5vw, 2rem)",
@@ -39,9 +42,11 @@ const POPUP_CONFIG = {
   },
   mobile: {
     src: "/popup-assets/popup-mobile.png",
-    amountBoxClassName: "absolute left-[10%] top-[54%] flex h-[15%] w-[80%] items-center justify-center px-[4%]",
-    ctaClassName: "absolute left-[18%] top-[77.5%] h-[10.5%] w-[64%] rounded-full",
-    closeClassName: "absolute right-[4%] top-[3%] h-[6%] w-[12%] rounded-full",
+    nameBoxClassName: "absolute left-[8%] top-[30%] flex h-[7%] w-[70%] items-center px-[1%]",
+    nameFontSize: "clamp(1.3rem, 6vw, 2rem)",
+    amountBoxClassName: "absolute left-[9%] top-[53.7%] flex h-[9%] w-[82%] items-center justify-center px-[4%]",
+    ctaClassName: "absolute left-[9%] top-[65.5%] h-[8.7%] w-[82%] rounded-full",
+    closeClassName: "absolute right-[6%] top-[6.5%] h-[6%] w-[9%] rounded-full",
     amountFontSize: (label: string) =>
       label.length >= 6 ? "clamp(2rem, 8vw, 2.8rem)" : label.length >= 5 ? "clamp(2.3rem, 9vw, 3.2rem)" : "clamp(2.6rem, 10vw, 3.6rem)",
     messageFontSize: "clamp(1.1rem, 5vw, 1.5rem)",
@@ -55,6 +60,7 @@ export function PrizePopup({
   result,
   amountLine,
   description,
+  userName,
   continueButtonRef,
   onClose,
 }: Props) {
@@ -91,7 +97,7 @@ export function PrizePopup({
         >
           <div className="relative">
             <h2 id="wheel-result-title" className="sr-only">
-              Gefeliciteerd!
+              Sveikiname!
             </h2>
             <p id="wheel-result-description" className="sr-only">
               {description}
@@ -104,6 +110,21 @@ export function PrizePopup({
               className="mx-auto h-auto w-full select-none object-contain"
               draggable={false}
             />
+
+            {userName ? (
+              <div className={popupConfig.nameBoxClassName}>
+                <span
+                  className="truncate font-extrabold text-white drop-shadow-[0_4px_14px_rgba(0,0,0,0.5)]"
+                  style={{
+                    fontFamily: "var(--font-inter), system-ui, -apple-system, sans-serif",
+                    fontSize: popupConfig.nameFontSize,
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  {userName}
+                </span>
+              </div>
+            ) : null}
 
             <div className={popupConfig.amountBoxClassName}>
               <div
@@ -123,7 +144,7 @@ export function PrizePopup({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Popup sluiten"
+              aria-label="Uždaryti"
               className={`${popupConfig.closeClassName} bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-white/75`}
             />
 
@@ -133,7 +154,7 @@ export function PrizePopup({
               onClick={onClose}
               className={`${popupConfig.ctaClassName} bg-transparent outline-none`}
             >
-              <span className="sr-only">OK, Begrepen</span>
+              <span className="sr-only">Supratau</span>
             </button>
           </div>
         </div>

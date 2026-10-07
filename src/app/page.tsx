@@ -56,7 +56,7 @@ export default async function Home({ searchParams }: Props) {
   const result = await createSessionAction(partnerName);
 
   if (!result.success || !result.data?.id) {
-    redirect("/wheel");
+    redirect("/win");
   }
 
   const sessionId = result.data.id;
@@ -68,5 +68,5 @@ export default async function Home({ searchParams }: Props) {
     ? String(result.data.public_id)
     : sessionId;
 
-  redirect(`/wheel?session=${encodeURIComponent(routeSessionId)}`);
+  redirect(`/win?session=${encodeURIComponent(routeSessionId)}`);
 }
