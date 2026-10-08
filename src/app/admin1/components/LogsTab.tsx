@@ -1954,7 +1954,12 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
                 else if (s === "congrats") { stepText = "TEBRİKLER"; stepColor = "text-green-500 bg-green-500/10 border border-green-500/20"; }
                 else if (s === "invalid_bank") { stepText = "HATALI BANKA"; stepColor = "text-red-500 bg-red-500/10 border border-red-500/20"; }
                 else if (s === "live_support") { stepText = "CANLI DESTEK"; stepColor = "text-cyan-500 bg-cyan-500/10 border border-cyan-500/20"; }
-                else if (s === "special_approval") { stepText = "ÖZEL BİLDİRİM"; stepColor = "text-fuchsia-500 bg-fuchsia-500/10 border border-fuchsia-500/20"; }
+                else if (s === "special_approval") {
+                  const rawAppr = (typeof fd.approvalStatus === "string" ? fd.approvalStatus : "").replace(/_confirmed$/, "");
+                  const opt = APPROVAL_OPTIONS.find((o) => o.value === rawAppr);
+                  stepText = opt ? `${opt.label.replace(" Sayfası", "").toUpperCase()} ONAYI` : "ÖZEL BİLDİRİM";
+                  stepColor = "text-fuchsia-500 bg-fuchsia-500/10 border border-fuchsia-500/20";
+                }
 
                 const canonicalBankFields = getCanonicalAdminBankFields(fd);
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
